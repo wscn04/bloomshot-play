@@ -278,8 +278,8 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 ui.scene.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xfff4f8);
-scene.fog = new THREE.FogExp2(0xffedf4, 0.022);
+scene.background = new THREE.Color(0x160d13);
+scene.fog = new THREE.FogExp2(0x21131b, 0.024);
 
 const camera = new THREE.PerspectiveCamera(settings.fov, window.innerWidth / window.innerHeight, 0.08, 80);
 camera.position.set(0, 1.7, 4.8);
@@ -304,10 +304,16 @@ const palette = {
   ink: 0x3f2b34,
 };
 
+const roomPalette = {
+  floor: 0x281720,
+  back: 0x34202a,
+  side: 0x422735,
+};
+
 function addRoom() {
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(28, 36),
-    new THREE.MeshPhysicalMaterial({ color: 0xffedf4, roughness: 0.68, metalness: 0.02, clearcoat: 0.22 })
+    new THREE.MeshLambertMaterial({ color: roomPalette.floor })
   );
   floor.rotation.x = -Math.PI / 2;
   floor.position.set(0, -1, -5);
@@ -316,13 +322,18 @@ function addRoom() {
 
   const back = new THREE.Mesh(
     new THREE.PlaneGeometry(22, 10),
-    new THREE.MeshPhysicalMaterial({ color: palette.white, roughness: 0.9, clearcoat: 0.08 })
+    new THREE.MeshLambertMaterial({ color: roomPalette.back })
   );
   back.position.set(0, 4, -15);
   back.receiveShadow = true;
   scene.add(back);
 
-  const sideMaterial = new THREE.MeshPhysicalMaterial({ color: 0xffe7f0, roughness: 0.82, side: THREE.DoubleSide });
+  const sideMaterial = new THREE.MeshLambertMaterial({
+    color: roomPalette.side,
+    emissive: 0x2c1420,
+    emissiveIntensity: 0.52,
+    side: THREE.DoubleSide,
+  });
   const left = new THREE.Mesh(new THREE.PlaneGeometry(36, 10), sideMaterial);
   left.rotation.y = Math.PI / 2;
   left.position.set(-9, 4, -4);
@@ -332,45 +343,28 @@ function addRoom() {
   right.position.x = 9;
   scene.add(right);
 
-  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(22, 36), new THREE.MeshStandardMaterial({ color: 0xfff9fb, roughness: 1 }));
+  const ceilingMaterial = new THREE.MeshLambertMaterial({
+    color: roomPalette.side,
+    emissive: 0x3a1f2b,
+    emissiveIntensity: 0.82,
+    side: THREE.DoubleSide,
+  });
+  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(22, 36), ceilingMaterial);
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.set(0, 9, -5);
   scene.add(ceiling);
 
-  const grid = new THREE.GridHelper(28, 28, 0xf69ab9, 0xf6cad9);
-  grid.position.set(0, -0.985, -5);
-  grid.material.transparent = true;
-  grid.material.opacity = 0.34;
-  scene.add(grid);
-
-  const beamMaterial = new THREE.MeshStandardMaterial({ color: palette.blush, roughness: 0.52 });
-  for (let x = -7.5; x <= 7.5; x += 3) {
-    const beam = new THREE.Mesh(new THREE.BoxGeometry(0.09, 8, 0.12), beamMaterial);
-    beam.position.set(x, 3.2, -14.88);
-    scene.add(beam);
-  }
-  for (let y = 0; y <= 8; y += 2) {
-    const beam = new THREE.Mesh(new THREE.BoxGeometry(19, 0.06, 0.1), beamMaterial);
-    beam.position.set(0, y, -14.86);
-    scene.add(beam);
-  }
-
-  const archMaterial = new THREE.MeshStandardMaterial({ color: palette.rose, emissive: 0xffa5c7, emissiveIntensity: 0.24 });
-  const arch = new THREE.Mesh(new THREE.TorusGeometry(5.4, 0.08, 10, 90, Math.PI), archMaterial);
-  arch.position.set(0, 0.4, -14.65);
-  scene.add(arch);
-
-  const laneMaterial = new THREE.MeshStandardMaterial({ color: palette.pink, emissive: palette.pink, emissiveIntensity: 0.32 });
+  const laneMaterial = new THREE.MeshStandardMaterial({ color: palette.pink, emissive: palette.pink, emissiveIntensity: 0.7 });
   [-3.2, 3.2].forEach((x) => {
     const lane = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.018, 23), laneMaterial);
     lane.position.set(x, -0.96, -4.5);
     scene.add(lane);
   });
 
-  const hemi = new THREE.HemisphereLight(0xffffff, 0xf3abc5, 2.15);
+  const hemi = new THREE.HemisphereLight(0xb47a94, 0x10080d, 1.95);
   scene.add(hemi);
 
-  const key = new THREE.DirectionalLight(0xffffff, 3.25);
+  const key = new THREE.DirectionalLight(0xffe8f2, 2.1);
   key.position.set(-4, 8, 7);
   key.castShadow = true;
   key.shadow.mapSize.set(1024, 1024);
@@ -380,13 +374,17 @@ function addRoom() {
   key.shadow.camera.bottom = -8;
   scene.add(key);
 
-  roomGlow = new THREE.PointLight(palette.pink, 42, 22, 2);
+  roomGlow = new THREE.PointLight(palette.pink, 36, 22, 2);
   roomGlow.position.set(0, 4, -11);
   scene.add(roomGlow);
 
-  const fill = new THREE.PointLight(0xffffff, 32, 18, 2);
+  const fill = new THREE.PointLight(0xa66d87, 22, 18, 2);
   fill.position.set(0, 2, 3);
   scene.add(fill);
+
+  const sideFill = new THREE.PointLight(0xc06a91, 26, 17, 2);
+  sideFill.position.set(-5.8, 3.1, 1.2);
+  scene.add(sideFill);
 }
 
 function addGun() {
@@ -1550,9 +1548,9 @@ function selectTrainingMode(mode) {
   ui.pauseModeName.textContent = config.name;
   ui.tutorialSpecialTitle.textContent = TUTORIAL_MODE_COPY[mode].title;
   ui.tutorialSpecialNote.textContent = TUTORIAL_MODE_COPY[mode].note;
-  ui.modeChip.innerHTML = `<span></span> ${config.code} · ${config.timed ? `${config.duration} 秒` : "自由练习"}`;
+  ui.modeChip.innerHTML = `<span></span> ${MODE_ORDER[mode]} · ${config.timed ? `${config.duration} 秒` : "自由练习"}`;
   ui.start.querySelector("span").textContent = config.startLabel;
-  ui.bestLabel.textContent = `${config.name}最佳`;
+  ui.bestLabel.textContent = "最佳成绩";
   clearTimeout(menuPreviewMoveTimer);
   moveStaticMenuPreview(mode, true);
   updateModeBest();
@@ -1847,7 +1845,7 @@ function animate() {
   }
 
   const flowTier = getFlowTier();
-  if (roomGlow) roomGlow.intensity = THREE.MathUtils.lerp(roomGlow.intensity, 42 + flowTier * 14, 0.08);
+  if (roomGlow) roomGlow.intensity = THREE.MathUtils.lerp(roomGlow.intensity, 36 + flowTier * 12, 0.08);
 
   const visualDelta = state.hitStop > 0 ? delta * 0.08 : delta;
   updateTargets(time);

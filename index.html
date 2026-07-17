@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#fff7fa" />
-    <title>Bloomshot v0.3 — 花流瞄准实验室</title>
+    <meta name="theme-color" content="#180d14" />
+    <title>Bloomshot v1.0 — 花流瞄准实验室</title>
     <meta name="description" content="粉白配色的解压系第一人称射击训练游戏" />
-    <link rel="stylesheet" href="./styles.css?v=game-ui-2" />
+    <link rel="stylesheet" href="./styles.css?v=1.0.0" />
   </head>
   <body>
     <main id="app" aria-label="Bloomshot 射击训练游戏">
@@ -18,9 +18,14 @@
       <header class="topbar">
         <a class="brand" href="#" aria-label="Bloomshot 首页">
           <span class="brand-mark"><i></i><i></i><i></i><i></i></span>
-          <span>BLOOMSHOT</span><small>v0.3</small>
+          <span>BLOOMSHOT</span><small>v1.0</small>
         </a>
-        <button id="settings-open" class="utility-btn" type="button" aria-label="打开设置">设置 <b>⌘</b></button>
+        <div class="top-actions">
+          <button id="daily-start" class="top-action top-daily" type="button">
+            <span>今日训练</span><b id="daily-streak">连续 0 天</b>
+          </button>
+          <button id="settings-open" class="top-action" type="button" aria-label="打开设置"><span>设置</span><b>⌘</b></button>
+        </div>
       </header>
 
       <section id="hud" class="hud is-hidden" aria-live="polite">
@@ -50,33 +55,15 @@
       <section id="menu" class="screen menu-screen">
         <div class="menu-watermark" aria-hidden="true">BLOOM</div>
         <div class="menu-grid" aria-hidden="true"></div>
-        <div class="hall-status" aria-hidden="true"><i></i><span>训练场在线</span><b>RANGE / 01</b></div>
 
-        <div class="training-hall">
-          <aside class="mode-rail ui-cut-panel" aria-label="训练模式选择">
-            <div class="ui-kicker"><i></i><span>训练模式</span><b>SELECT</b></div>
-            <div class="mode-tabs" role="group" aria-label="训练模式">
-              <button id="mode-flick" class="mode-tab is-active" type="button" data-mode="flick">
-                <small>01</small><b>点射</b><span>动态三靶</span><i></i>
-              </button>
-              <button id="mode-switch" class="mode-tab" type="button" data-mode="switch">
-                <small>02</small><b>切换</b><span>大角拉枪</span><i></i>
-              </button>
-              <button id="mode-track" class="mode-tab" type="button" data-mode="track">
-                <small>03</small><b>追踪</b><span>持续覆盖</span><i></i>
-              </button>
-              <button id="mode-zen" class="mode-tab" type="button" data-mode="zen">
-                <small>04</small><b>自由</b><span>自适应节奏</span><i></i>
-              </button>
-            </div>
-            <div class="mode-rail-hint"><kbd>鼠标</kbd><span>选择训练项目</span></div>
-          </aside>
-
+        <div class="simple-lobby">
           <div class="menu-hero">
-            <p id="mode-chip" class="mode-chip"><span></span> BLOOM FLICK · 45 秒</p>
-            <div class="hall-title-line"><b id="hall-mode-index">01 / 04</b><i></i></div>
+            <p id="mode-chip" class="mode-chip"><span></span> 01 / 04 · 45 秒</p>
+            <b id="hall-mode-index" class="sr-only">01 / 04</b>
             <h1 id="menu-mode-title">点射花园</h1>
             <p id="menu-mode-tagline" class="mode-tagline">快速发现 快速命中</p>
+            <span id="hall-objective" class="sr-only">快速发现并击碎花蕊</span>
+            <span id="mode-name" class="sr-only">BLOOM FLICK</span>
 
             <button id="preview-hit" class="target-preview" type="button" aria-label="点击花靶预览命中反馈">
               <span class="orbit orbit-one"></span>
@@ -93,32 +80,34 @@
               </span>
               <em id="preview-feedback" aria-live="polite">点击花蕊 预览命中反馈</em>
             </button>
+
+            <div class="hero-record">
+              <span id="best-label">最佳成绩</span>
+              <strong id="menu-best">—</strong>
+              <p><b id="mode-duration">00:45</b><i></i><b id="mode-targets">动态三靶</b></p>
+            </div>
           </div>
 
-          <aside class="launch-dock ui-cut-panel">
-            <div class="ui-kicker"><i></i><span>本局指令</span><b>READY</b></div>
-            <div class="mission-head">
-              <span>主训练</span>
-              <h2 id="hall-objective">快速发现并击碎花蕊</h2>
+          <div class="simple-mode-dock ui-cut-panel">
+            <div class="mode-tabs" role="group" aria-label="训练模式">
+              <button id="mode-flick" class="mode-tab is-active" type="button" data-mode="flick">
+                <small>01</small><span><b>点射</b><em>动态三靶 · 45 秒</em></span><i></i>
+              </button>
+              <button id="mode-switch" class="mode-tab" type="button" data-mode="switch">
+                <small>02</small><span><b>切换</b><em>大角拉枪 · 45 秒</em></span><i></i>
+              </button>
+              <button id="mode-track" class="mode-tab" type="button" data-mode="track">
+                <small>03</small><span><b>追踪</b><em>持续覆盖 · 30 秒</em></span><i></i>
+              </button>
+              <button id="mode-zen" class="mode-tab" type="button" data-mode="zen">
+                <small>04</small><span><b>自由</b><em>自适应节奏</em></span><i></i>
+              </button>
             </div>
-            <div class="session-meta">
-              <div><span>训练</span><b id="mode-name">BLOOM FLICK</b></div>
-              <div><span>时长</span><b id="mode-duration">00:45</b></div>
-              <div><span>目标</span><b id="mode-targets">动态三靶</b></div>
-            </div>
-            <div class="best-row"><span id="best-label">点射花园最佳</span><strong id="menu-best">—</strong></div>
-            <button id="daily-start" class="daily-card" type="button">
-              <i></i><span><small>每日任务</small><b>今日花房 · 三项训练</b></span>
-              <em id="daily-streak">连续 0 天</em><strong>→</strong>
-            </button>
-            <button id="start" class="command-btn command-btn-primary hall-start" type="button" disabled>
+            <button id="start" class="command-btn command-btn-primary simple-start" type="button" disabled>
               <span>场景准备中</span><b>→</b>
             </button>
-            <small class="launch-hint">进入后移动鼠标瞄准 · ESC 暂停</small>
-          </aside>
+          </div>
         </div>
-
-        <div class="hall-footer" aria-hidden="true"><span>BLOOMSHOT TRAINING SYSTEM</span><i></i><b>粉白靶场 / 实时反馈 / 自适应节奏</b></div>
       </section>
 
       <section id="tutorial" class="screen tutorial-screen is-hidden" aria-labelledby="tutorial-title">
@@ -301,6 +290,6 @@
         }, 1500);
       });
     </script>
-    <script type="module" src="./game.js"></script>
+    <script type="module" src="./game.js?v=1.0.0"></script>
   </body>
 </html>
