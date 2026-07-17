@@ -48,6 +48,8 @@ const ui = {
   modeTargets: $("#mode-targets"),
   menuModeTitle: $("#menu-mode-title"),
   menuModeTagline: $("#menu-mode-tagline"),
+  hallModeIndex: $("#hall-mode-index"),
+  hallObjective: $("#hall-objective"),
   previewHit: $("#preview-hit"),
   previewFeedback: $("#preview-feedback"),
   flowLabel: $("#flow-label"),
@@ -90,6 +92,8 @@ const ui = {
   showGun: $("#show-gun"),
   cameraShake: $("#camera-shake"),
   lowGraphics: $("#low-graphics"),
+  settingsPreview: $("#settings-preview"),
+  settingsPreviewStatus: $("#settings-preview-status"),
   dailyStart: $("#daily-start"),
   dailyStreak: $("#daily-streak"),
   dailyProgress: $("#daily-progress"),
@@ -110,11 +114,12 @@ const BEST_KEY = "bloomshot-best-v03";
 const DAILY_KEY = "bloomshot-daily-v03";
 const DAILY_MODES = ["flick", "switch", "track"];
 const TRAINING_MODES = {
-  flick: { name: "点射花园", code: "BLOOM FLICK", duration: 45, targetCount: 3, targetLabel: "动态三靶", tagline: "快速发现 快速命中", startLabel: "开始点射 45 秒", timed: true },
-  switch: { name: "花间切换", code: "PETAL SWITCH", duration: 45, targetCount: 1, targetLabel: "远距单靶", tagline: "快速转向 精准落点", startLabel: "开始切换 45 秒", timed: true },
-  track: { name: "花流追踪", code: "PETAL TRACK", duration: 30, targetCount: 1, targetLabel: "移动花蕊", tagline: "持续覆盖 平滑跟随", startLabel: "开始追踪 30 秒", timed: true, tracking: true },
-  zen: { name: "自由花房", code: "ZEN FLOW", duration: Infinity, targetCount: 3, targetLabel: "自适应花蕊", tagline: "放松呼吸 自由练习", startLabel: "进入自由花房", timed: false, adaptive: true },
+  flick: { name: "点射花园", code: "BLOOM FLICK", duration: 45, targetCount: 3, targetLabel: "动态三靶", tagline: "快速发现 快速命中", objective: "快速发现并击碎花蕊", startLabel: "开始点射 45 秒", timed: true },
+  switch: { name: "花间切换", code: "PETAL SWITCH", duration: 45, targetCount: 1, targetLabel: "远距单靶", tagline: "快速转向 精准落点", objective: "完成大角度转向与精准落点", startLabel: "开始切换 45 秒", timed: true },
+  track: { name: "花流追踪", code: "PETAL TRACK", duration: 30, targetCount: 1, targetLabel: "移动花蕊", tagline: "持续覆盖 平滑跟随", objective: "持续覆盖并跟随移动花蕊", startLabel: "开始追踪 30 秒", timed: true, tracking: true },
+  zen: { name: "自由花房", code: "ZEN FLOW", duration: Infinity, targetCount: 3, targetLabel: "自适应花蕊", tagline: "放松呼吸 自由练习", objective: "按自己的节奏自由绽放", startLabel: "进入自由花房", timed: false, adaptive: true },
 };
+const MODE_ORDER = { flick: "01 / 04", switch: "02 / 04", track: "03 / 04", zen: "04 / 04" };
 const TUTORIAL_MODE_COPY = {
   flick: { title: "连续点射", note: "保持节奏快速切换目标" },
   switch: { title: "大角转向", note: "看清目标再完成快速拉枪" },
@@ -1539,6 +1544,8 @@ function selectTrainingMode(mode) {
   ui.modeTargets.textContent = config.targetLabel;
   ui.menuModeTitle.textContent = config.name;
   ui.menuModeTagline.textContent = config.tagline;
+  ui.hallModeIndex.textContent = MODE_ORDER[mode];
+  ui.hallObjective.textContent = config.objective;
   ui.tutorialModeName.textContent = config.name;
   ui.pauseModeName.textContent = config.name;
   ui.tutorialSpecialTitle.textContent = TUTORIAL_MODE_COPY[mode].title;
@@ -1645,6 +1652,17 @@ function applySettingsToUi() {
   ui.showGun.checked = settings.showGun;
   ui.cameraShake.checked = settings.cameraShake;
   ui.lowGraphics.checked = settings.lowGraphics;
+  const fovProgress = (Number(settings.fov) - 55) / 45;
+  ui.settingsPreview.style.setProperty("--preview-scale", String(0.9 + fovProgress * 0.18));
+  ui.settingsPreview.style.setProperty("--preview-glow", String(0.18 + Number(settings.flash) * 0.72));
+  ui.settingsPreview.style.setProperty("--preview-blur", `${Math.round(12 + Number(settings.flash) * 34)}px`);
+  ui.settingsPreviewStatus.textContent = settings.lowGraphics
+    ? "性能优先"
+    : Number(settings.flash) > 0.82 || Number(settings.particles) > 1.15
+      ? "强反馈"
+      : Number(settings.volume) < 0.4
+        ? "轻量反馈"
+        : "标准配置";
 }
 
 function applySettings() {
