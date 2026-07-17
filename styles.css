@@ -1686,3 +1686,9 @@ body.new-best-result .grade-emblem::after { box-shadow: 0 0 62px rgba(255,95,157
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+/* Keep the system pointer hidden during active training even when a browser
+   refuses to reacquire Pointer Lock after pausing. */
+body[data-screen="playing"],
+body[data-screen="playing"] * {
+  cursor: none !important;
+}
