@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#180d14" />
-    <title>Bloomshot v1.0 — 花流瞄准实验室</title>
+    <title>Bloomshot v1.0 — 瞄准训练场</title>
     <meta name="description" content="粉白配色的解压系第一人称射击训练游戏" />
     <link rel="stylesheet" href="./styles.css?v=1.0.1" />
   </head>
@@ -60,10 +60,10 @@
           <div class="menu-hero">
             <p id="mode-chip" class="mode-chip"><span></span> 01 / 04 · 45 秒</p>
             <b id="hall-mode-index" class="sr-only">01 / 04</b>
-            <h1 id="menu-mode-title">点射花园</h1>
-            <p id="menu-mode-tagline" class="mode-tagline">快速发现 快速命中</p>
-            <span id="hall-objective" class="sr-only">快速发现并击碎花蕊</span>
-            <span id="mode-name" class="sr-only">BLOOM FLICK</span>
+            <h1 id="menu-mode-title">快速点射</h1>
+            <p id="menu-mode-tagline" class="mode-tagline">快速发现 连续命中</p>
+            <span id="hall-objective" class="sr-only">在 45 秒内快速击中连续出现的目标</span>
+            <span id="mode-name" class="sr-only">FLICK</span>
 
             <button id="preview-hit" class="target-preview" type="button" aria-label="点击花靶预览命中反馈">
               <span class="orbit orbit-one"></span>
@@ -78,7 +78,7 @@
                   <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
                 </span>
               </span>
-              <em id="preview-feedback" aria-live="polite">点击花蕊 预览命中反馈</em>
+              <em id="preview-feedback" aria-live="polite">点击目标 预览命中反馈</em>
             </button>
 
             <div class="hero-record">
@@ -97,10 +97,10 @@
                 <small>02</small><span><b>切换</b><em>大角拉枪 · 45 秒</em></span><i></i>
               </button>
               <button id="mode-track" class="mode-tab" type="button" data-mode="track">
-                <small>03</small><span><b>追踪</b><em>持续覆盖 · 30 秒</em></span><i></i>
+                <small>03</small><span><b>追踪</b><em>移动单靶 · 30 秒</em></span><i></i>
               </button>
               <button id="mode-zen" class="mode-tab" type="button" data-mode="zen">
-                <small>04</small><span><b>自由</b><em>自适应节奏</em></span><i></i>
+                <small>04</small><span><b>自由</b><em>不限时间</em></span><i></i>
               </button>
             </div>
             <button id="start" class="command-btn command-btn-primary simple-start" type="button" disabled>
@@ -113,13 +113,13 @@
       <section id="tutorial" class="screen tutorial-screen is-hidden" aria-labelledby="tutorial-title">
         <div class="tutorial-shell">
           <div class="tutorial-command ui-cut-panel">
-            <div class="ui-kicker"><i></i><span>训练校准</span><b>CAL / 01</b></div>
-            <div class="tutorial-mode"><i></i><span id="tutorial-mode-name">点射花园</span></div>
-            <h2 id="tutorial-title">校准你的准星</h2>
+            <div class="ui-kicker"><i></i><span>操作说明</span><b>GUIDE / 01</b></div>
+            <div class="tutorial-mode"><i></i><span id="tutorial-mode-name">快速点射</span></div>
+            <h2 id="tutorial-title">熟悉基本操作</h2>
             <p>三步熟悉训练控制，完成后直接进入本局</p>
             <div class="tutorial-steps">
-              <div class="is-active"><b>01</b><span>移动准星</span><small>移动鼠标锁定花蕊</small><i></i></div>
-              <div><b>02</b><span>确认命中</span><small>左键击中目标中心</small><i></i></div>
+              <div class="is-active"><b>01</b><span>移动准星</span><small>移动鼠标锁定目标</small><i></i></div>
+              <div><b>02</b><span>点击射击</span><small>左键击中目标中心</small><i></i></div>
               <div><b>03</b><span id="tutorial-special-title">连续点射</span><small id="tutorial-special-note">保持节奏快速切换目标</small><i></i></div>
             </div>
             <div class="tutorial-actions">
@@ -141,15 +141,15 @@
       <section id="pause" class="screen pause-screen is-hidden" aria-labelledby="pause-title">
         <div class="pause-reticle" aria-hidden="true"><i></i><i></i><b></b></div>
         <div class="pause-panel">
-          <div class="ui-kicker"><i></i><span>训练冻结</span><b>PAUSED</b></div>
-          <p id="pause-mode-name" class="pause-mode-name">点射花园</p>
+          <div class="ui-kicker"><i></i><span>已暂停</span><b>PAUSED</b></div>
+          <p id="pause-mode-name" class="pause-mode-name">快速点射</p>
           <h2 id="pause-title">暂停</h2>
           <p class="pause-note">计时与连击已冻结</p>
           <nav class="pause-actions" aria-label="暂停选项">
             <button id="resume" class="command-btn command-btn-primary" type="button"><span>继续训练</span><kbd>ESC</kbd></button>
             <button id="pause-restart" class="command-btn" type="button"><span>重新开始</span><b>↻</b></button>
             <button id="pause-settings" class="command-btn" type="button"><span>训练设置</span><b>⌘</b></button>
-            <button id="quit" class="command-btn command-btn-danger" type="button"><span>返回花房</span><b>←</b></button>
+            <button id="quit" class="command-btn command-btn-danger" type="button"><span>返回大厅</span><b>←</b></button>
           </nav>
           <small class="pause-hint">选择操作后准星将重新锁定</small>
         </div>
@@ -160,7 +160,7 @@
           <header class="settings-head">
             <div>
               <div class="ui-kicker"><i></i><span>训练配置</span><b>CONFIG / 01</b></div>
-              <h2 id="settings-title">配置训练舱</h2>
+              <h2 id="settings-title">训练设置</h2>
               <p>所有调整即时生效</p>
             </div>
             <button id="settings-close" class="settings-close" type="button" aria-label="关闭设置"><span>返回</span><b>×</b></button>
@@ -196,7 +196,7 @@
               </section>
 
               <section class="settings-section">
-                <div class="settings-section-head"><span>训练表现</span><b>DISPLAY</b></div>
+                <div class="settings-section-head"><span>显示与性能</span><b>DISPLAY</b></div>
                 <div class="toggle-grid">
                   <label><span><b>显示训练枪</b><small>关闭后只保留准星</small></span><input id="show-gun" type="checkbox" checked /><i></i></label>
                   <label><span><b>轻微镜头反馈</b><small>命中时增加细微冲击感</small></span><input id="camera-shake" type="checkbox" checked /><i></i></label>
@@ -215,12 +215,12 @@
 
       <section id="daily-transition" class="screen centered is-hidden" aria-labelledby="daily-title">
         <div class="daily-modal glass">
-          <p class="eyebrow"><span></span> DAILY BLOOM</p>
+          <p class="eyebrow"><span></span> DAILY TRAINING</p>
           <div id="daily-progress" class="daily-progress"><i class="done"></i><i></i><i></i></div>
           <h2 id="daily-title">第一项完成</h2>
           <p id="daily-note">调整呼吸，准备进入下一项</p>
           <div class="daily-stage-score"><span>本项得分</span><b id="daily-stage-score">0</b></div>
-          <button id="daily-next" class="primary-btn" type="button"><span>进入花间切换</span><b>→</b></button>
+          <button id="daily-next" class="primary-btn" type="button"><span>下一项：目标切换</span><b>→</b></button>
           <button id="daily-exit" class="text-btn" type="button">结束今日训练</button>
         </div>
       </section>
@@ -228,7 +228,7 @@
       <section id="results" class="screen results-screen is-hidden" aria-labelledby="result-title">
         <div class="result-shell ui-cut-panel">
           <section class="result-hero">
-            <div class="ui-kicker"><i></i><span>训练完成</span><b id="history-label">BLOOM FLICK</b></div>
+            <div class="ui-kicker"><i></i><span>训练完成</span><b id="history-label">FLICK</b></div>
             <div class="grade-emblem">
               <span>GRADE</span>
               <strong id="grade">A</strong>
@@ -265,7 +265,7 @@
             </div>
             <div class="result-actions">
               <button id="retry" class="command-btn command-btn-primary" type="button"><span>再来一局</span><b>↻</b></button>
-              <button id="home" class="command-btn" type="button"><span>返回花房</span><b>←</b></button>
+              <button id="home" class="command-btn" type="button"><span>返回大厅</span><b>←</b></button>
             </div>
           </section>
           <div class="result-bloom-lines" aria-hidden="true"><i></i><i></i><i></i></div>

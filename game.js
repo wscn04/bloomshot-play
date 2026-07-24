@@ -114,17 +114,17 @@ const BEST_KEY = "bloomshot-best-v03";
 const DAILY_KEY = "bloomshot-daily-v03";
 const DAILY_MODES = ["flick", "switch", "track"];
 const TRAINING_MODES = {
-  flick: { name: "点射花园", code: "BLOOM FLICK", duration: 45, targetCount: 3, targetLabel: "动态三靶", tagline: "快速发现 快速命中", objective: "快速发现并击碎花蕊", startLabel: "开始点射 45 秒", timed: true },
-  switch: { name: "花间切换", code: "PETAL SWITCH", duration: 45, targetCount: 1, targetLabel: "远距单靶", tagline: "快速转向 精准落点", objective: "完成大角度转向与精准落点", startLabel: "开始切换 45 秒", timed: true },
-  track: { name: "花流追踪", code: "PETAL TRACK", duration: 30, targetCount: 1, targetLabel: "移动花蕊", tagline: "持续覆盖 平滑跟随", objective: "持续覆盖并跟随移动花蕊", startLabel: "开始追踪 30 秒", timed: true, tracking: true },
-  zen: { name: "自由花房", code: "ZEN FLOW", duration: Infinity, targetCount: 3, targetLabel: "自适应花蕊", tagline: "放松呼吸 自由练习", objective: "按自己的节奏自由绽放", startLabel: "进入自由花房", timed: false, adaptive: true },
+  flick: { name: "快速点射", code: "FLICK", duration: 45, targetCount: 3, targetLabel: "动态三靶", tagline: "快速发现 连续命中", objective: "在 45 秒内快速击中连续出现的目标", startLabel: "开始训练", timed: true },
+  switch: { name: "目标切换", code: "SWITCH", duration: 45, targetCount: 1, targetLabel: "远距单靶", tagline: "大幅转向 精准落点", objective: "在 45 秒内完成大角度目标切换", startLabel: "开始训练", timed: true },
+  track: { name: "平滑追踪", code: "TRACK", duration: 30, targetCount: 1, targetLabel: "移动单靶", tagline: "保持准星 持续跟随", objective: "按住左键持续跟随移动目标", startLabel: "开始训练", timed: true, tracking: true },
+  zen: { name: "自由训练", code: "FREEPLAY", duration: Infinity, targetCount: 3, targetLabel: "自适应目标", tagline: "自定节奏 随时结束", objective: "自由练习 按 E 结束本轮", startLabel: "开始自由训练", timed: false, adaptive: true },
 };
 const MODE_ORDER = { flick: "01 / 04", switch: "02 / 04", track: "03 / 04", zen: "04 / 04" };
 const TUTORIAL_MODE_COPY = {
-  flick: { title: "连续点射", note: "保持节奏快速切换目标" },
+  flick: { title: "连续命中", note: "保持节奏快速击中连续目标" },
   switch: { title: "大角转向", note: "看清目标再完成快速拉枪" },
-  track: { title: "按住追踪", note: "保持左键持续覆盖移动花蕊" },
-  zen: { title: "自由绽放", note: "按自己的节奏持续完成命中" },
+  track: { title: "按住追踪", note: "保持左键持续跟随移动目标" },
+  zen: { title: "自由练习", note: "按自己的节奏持续命中目标" },
 };
 const defaultSettings = {
   sensitivity: 1,
@@ -977,10 +977,10 @@ function updateAdaptiveDifficulty(hit, reaction = 9999) {
 
 function showHitFeedback(tier) {
   const wordSets = [
-    ["清脆", "命中", "绽放"],
-    ["稳定", "锁定", "漂亮"],
-    ["进入状态", "节奏正好", "持续绽放"],
-    ["满格绽放", "势不可挡", "纯粹状态"],
+    ["命中", "精准", "漂亮"],
+    ["很稳", "节奏在线", "继续"],
+    ["状态正佳", "保持节奏", "连续命中"],
+    ["火力全开", "势不可挡", "完美发挥"],
   ];
   const words = wordSets[tier];
   ui.feedback.textContent = words[Math.floor(Math.random() * words.length)];
@@ -1011,13 +1011,13 @@ function pickTrackingFeedback(pool) {
 function showTrackingFeedback(stage, target, variant = 0, looping = false) {
   if (!target) return;
   const stageWords = {
-    1: ["锁定", "跟上"],
-    2: ["很稳", "保持流动"],
-    3: ["进入状态", "节奏正好"],
-    4: ["满格绽放"],
+    1: ["目标锁定", "跟上了"],
+    2: ["跟随稳定", "保持准星"],
+    3: ["节奏在线", "状态正佳"],
+    4: ["完美追踪"],
   };
-  const loopWords = ["持续锁定", "节奏正好", "花流不断", "纯粹状态"];
-  const text = pickTrackingFeedback(looping ? loopWords : stageWords[stage] || ["锁定"]);
+  const loopWords = ["目标锁定", "跟随稳定", "保持节奏", "完美追踪"];
+  const text = pickTrackingFeedback(looping ? loopWords : stageWords[stage] || ["目标锁定"]);
   ui.feedback.textContent = text;
   retrigger(ui.feedback, "show");
   retrigger(ui.crosshair, "hit");
@@ -1242,7 +1242,7 @@ function startGame() {
   state.pointerWasLocked = false;
   document.body.dataset.flow = "0";
   ui.flowLabel.textContent = "FLOW 1";
-  ui.timeLabel.textContent = config.tracking ? "追踪时间" : config.timed ? "剩余时间" : "自由时间";
+  ui.timeLabel.textContent = config.tracking ? "追踪时间" : config.timed ? "剩余时间" : "训练时间";
   camera.rotation.set(0, 0, 0);
   clearTargets();
   fillTargets();
@@ -1359,10 +1359,10 @@ function renderResult(summary, previous, isBest) {
   const isZen = summary.mode === "zen";
   const isDaily = summary.mode === "daily";
   ui.grade.textContent = isZen ? "∞" : summary.grade;
-  ui.resultTitle.textContent = isDaily ? "今日花房完成" : isZen ? "释放完成" : summary.grade === "S" ? "满格绽放" : summary.grade === "A" ? "漂亮收尾" : summary.grade === "B" ? "状态升温" : "再来一轮";
-  ui.resultScoreLabel.textContent = isZen ? "击碎目标" : isDaily ? "综合得分" : "最终得分";
+  ui.resultTitle.textContent = isDaily ? "今日训练完成" : isZen ? "训练结束" : summary.grade === "S" ? "完美发挥" : summary.grade === "A" ? "状态正佳" : summary.grade === "B" ? "渐入状态" : "再来一轮";
+  ui.resultScoreLabel.textContent = isZen ? "命中目标" : isDaily ? "综合得分" : "最终得分";
   ui.finalScore.textContent = (isZen ? summary.hits : summary.score).toLocaleString("zh-CN");
-  ui.precisionLabel.textContent = isTrack ? "覆盖" : "精准";
+  ui.precisionLabel.textContent = isTrack ? "跟随" : "精准";
   ui.speedLabel.textContent = isTrack ? "平滑" : "速度";
   ui.stabilityLabel.textContent = isTrack ? "持续" : "稳定";
   ui.precisionGrade.textContent = summary.precisionGrade;
@@ -1375,15 +1375,15 @@ function renderResult(summary, previous, isBest) {
   ui.fastestSpeed.textContent = summary.fastestSpeed ? `${summary.fastestSpeed}ms` : "—";
   ui.weakZone.textContent = summary.weakZone;
   ui.newBest.classList.toggle("show", isBest);
-  ui.resultNote.textContent = isDaily ? `三项训练全部完成 · 连续 ${dailyRecord.streak} 天` : isZen ? `这次一共绽放 ${summary.hits} 次` : summary.accuracy >= 85 ? "准心稳，节奏快，这局很干净" : summary.accuracy >= 65 ? "手感起来了，再冲一轮" : "放松手腕，盯住花蕊中心";
+  ui.resultNote.textContent = isDaily ? `三项训练全部完成 · 连续 ${dailyRecord.streak} 天` : isZen ? `本轮命中 ${summary.hits} 次` : summary.accuracy >= 85 ? "准心稳 节奏快 这局很干净" : summary.accuracy >= 65 ? "手感起来了 再冲一轮" : "放松手腕 瞄准目标中心";
   if (!previous) ui.resultInsight.textContent = summary.weakZone === "继续采样" ? "第一局已记录，下一局开始显示进步" : `${summary.weakZone}反应稍慢 · 下一局注意提前回正`;
-  else if (isZen) ui.resultInsight.textContent = summary.hits >= previous.hits ? `比上次多击碎 ${summary.hits - previous.hits} 个目标` : `再击碎 ${previous.hits - summary.hits + 1} 个就能超过上次`;
+  else if (isZen) ui.resultInsight.textContent = summary.hits >= previous.hits ? `比上次多命中 ${summary.hits - previous.hits} 个目标` : `再命中 ${previous.hits - summary.hits + 1} 个就能超过上次`;
   else {
     const scoreDelta = summary.score - previous.score;
     const accuracyDelta = summary.accuracy - previous.accuracy;
     ui.resultInsight.textContent = `${scoreDelta >= 0 ? "得分 +" : "得分 "}${scoreDelta.toLocaleString("zh-CN")} · 命中率 ${accuracyDelta >= 0 ? "+" : ""}${accuracyDelta}%`;
   }
-  ui.historyLabel.textContent = summary.mode === "daily" ? "DAILY" : TRAINING_MODES[summary.mode]?.code || "FLOW LAB";
+  ui.historyLabel.textContent = summary.mode === "daily" ? "DAILY" : TRAINING_MODES[summary.mode]?.code || "TRAINING";
   renderHistory();
   updateModeBest();
 }
@@ -1443,7 +1443,7 @@ function showDailyTransition(summary) {
   ui.dailyTitle.textContent = `第 ${state.dailyIndex + 1} 项完成`;
   ui.dailyNote.textContent = "调整呼吸，准备进入下一项";
   ui.dailyStageScore.textContent = summary.score.toLocaleString("zh-CN");
-  ui.dailyNext.querySelector("span").textContent = `进入${nextMode.name}`;
+  ui.dailyNext.querySelector("span").textContent = `下一项：${nextMode.name}`;
   [...ui.dailyProgress.children].forEach((item, index) => item.classList.toggle("done", index <= state.dailyIndex));
 }
 
@@ -1514,7 +1514,7 @@ function moveStaticMenuPreview(mode, reset = false) {
 
 function playMenuPreview() {
   if (state.mode !== "menu") return;
-  const words = ["正中", "漂亮", "绽放", "好节奏"];
+  const words = ["正中", "漂亮", "精准", "好节奏"];
   menuPreviewHits = (menuPreviewHits % 8) + 1;
   ui.previewFeedback.textContent = words[(menuPreviewHits - 1) % words.length];
   retrigger(ui.previewHit, "is-hit");
@@ -1548,7 +1548,7 @@ function selectTrainingMode(mode) {
   ui.pauseModeName.textContent = config.name;
   ui.tutorialSpecialTitle.textContent = TUTORIAL_MODE_COPY[mode].title;
   ui.tutorialSpecialNote.textContent = TUTORIAL_MODE_COPY[mode].note;
-  ui.modeChip.innerHTML = `<span></span> ${MODE_ORDER[mode]} · ${config.timed ? `${config.duration} 秒` : "自由练习"}`;
+  ui.modeChip.innerHTML = `<span></span> ${MODE_ORDER[mode]} · ${config.timed ? `${config.duration} 秒` : "不限时间"}`;
   ui.start.querySelector("span").textContent = config.startLabel;
   ui.bestLabel.textContent = "最佳成绩";
   clearTimeout(menuPreviewMoveTimer);

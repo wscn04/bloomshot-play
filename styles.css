@@ -1310,6 +1310,17 @@ body.new-best-result .grade-emblem::after { box-shadow: 0 0 62px rgba(255,95,157
 .command-btn { min-height: 58px; padding-inline: 20px 14px; font-size: 15px; }
 .command-btn b,
 .command-btn kbd { min-width: 32px; height: 32px; font-size: 13px; }
+.command-btn.simple-start {
+  font-size: clamp(28px, 2vw, 34px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -.045em;
+}
+.command-btn.simple-start b {
+  min-width: 58px;
+  height: 58px;
+  font-size: 24px;
+}
 .command-link { font-size: 12px; }
 .primary-btn { min-height: 62px; font-size: 15px; }
 .text-btn { font-size: 13px; }
