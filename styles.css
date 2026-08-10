@@ -31,7 +31,7 @@ html, body {
   font-family: "DM Sans", "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
-button, input { font: inherit; }
+button, input, textarea { font: inherit; }
 button { color: inherit; }
 
 #app {
@@ -1186,6 +1186,203 @@ body.game-active .end-session { border-color: rgba(255,255,255,.16); background:
 .settings-footer .command-link { margin-right: auto; }
 .settings-footer span { color: rgba(255,255,255,.25); font-size: 7px; }
 
+.sensitivity-calibration-entry { min-height: 86px; padding: 13px 14px; display: grid; grid-template-columns: minmax(0,1fr) 118px 154px; align-items: center; gap: 14px; border: 1px solid rgba(255,95,157,.22); border-radius: 7px; background: linear-gradient(100deg, rgba(255,95,157,.12), rgba(255,255,255,.035)); }
+.sensitivity-calibration-entry > div { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.sensitivity-calibration-entry > div > span { color: white; font-size: 15px; font-weight: 750; }
+.sensitivity-calibration-entry > div > small { color: rgba(255,255,255,.4); font-size: 12px; line-height: 1.35; }
+.sensitivity-calibration-entry .dpi-field { min-width: 0; display: flex; flex-direction: column; gap: 7px; color: rgba(255,255,255,.43); font-size: 11px; }
+.sensitivity-calibration-entry input,
+.calibration-setup input { width: 100%; height: 38px; padding: 0 11px; border: 1px solid rgba(255,255,255,.12); border-radius: 5px; outline: none; background: rgba(15,7,12,.38); color: white; font: 750 15px/1 "Manrope", sans-serif; }
+.sensitivity-calibration-entry input:focus,
+.calibration-setup input:focus { border-color: rgba(255,95,157,.7); box-shadow: 0 0 0 3px rgba(255,95,157,.1); }
+.sensitivity-calibration-entry > button { height: 54px; padding: 0 10px 0 16px; display: flex; align-items: center; justify-content: space-between; border: 0; clip-path: polygon(0 0, 100% 0, 100% calc(100% - 13px), calc(100% - 13px) 100%, 0 100%); background: var(--ui-pink); color: white; cursor: pointer; font-size: 14px; font-weight: 750; }
+.sensitivity-calibration-entry > button b { width: 34px; height: 34px; display: grid; place-items: center; background: rgba(80,17,43,.18); font-size: 18px; }
+.sensitivity-calibration-entry > button:hover { background: #ff72aa; }
+
+/* AI training coach */
+.ai-coach-screen {
+  z-index: 28;
+  display: grid;
+  place-items: center;
+  padding: clamp(14px, 2.4vh, 28px);
+  background:
+    radial-gradient(circle at 20% 35%, rgba(255,95,157,.15), transparent 34%),
+    radial-gradient(circle at 82% 68%, rgba(255,181,208,.08), transparent 31%),
+    rgba(16,8,13,.86);
+  backdrop-filter: blur(13px) saturate(.72);
+}
+
+.ai-coach-shell {
+  width: min(1240px, 100%);
+  height: min(790px, calc(100dvh - 36px));
+  min-height: 0;
+  padding: 28px 32px 30px;
+  display: flex;
+  flex-direction: column;
+  color: white;
+}
+
+.ai-coach-head {
+  position: relative;
+  z-index: 2;
+  min-height: 116px;
+  padding-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid rgba(255,255,255,.09);
+}
+
+.ai-coach-head h2 {
+  margin: 19px 0 5px;
+  color: white;
+  font: 800 clamp(34px, 4.2vw, 54px)/.96 "Manrope", "PingFang SC", sans-serif;
+  letter-spacing: -.06em;
+}
+
+.ai-coach-head > div > p { margin: 0; color: rgba(255,255,255,.4); font-size: 13px; }
+.ai-coach-layout { position: relative; z-index: 2; min-height: 0; flex: 1; display: grid; grid-template-columns: 1.06fr .94fr; }
+.coach-chat { min-width: 0; min-height: 0; padding: 24px 28px 0 2px; display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,.09); }
+.coach-messages { min-height: 0; flex: 1; overflow-y: auto; padding: 1px 10px 14px 0; display: flex; flex-direction: column; gap: 12px; scrollbar-width: thin; scrollbar-color: rgba(255,95,157,.36) transparent; }
+.coach-message { max-width: 86%; display: grid; grid-template-columns: 34px minmax(0,1fr); gap: 10px; align-items: start; }
+.coach-message > span { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid rgba(255,95,157,.3); border-radius: 7px; background: rgba(255,95,157,.1); color: var(--ui-pink-soft); font: 800 10px/1 "Manrope", sans-serif; }
+.coach-message > span img { width: 100%; height: 100%; display: block; border-radius: 6px; object-fit: cover; object-position: 50% 38%; filter: saturate(.82) contrast(1.04); }
+.coach-message p { margin: 0; padding: 12px 14px; border: 1px solid rgba(255,255,255,.08); border-radius: 3px 9px 9px 9px; background: rgba(255,255,255,.04); color: rgba(255,255,255,.77); font-size: 15px; line-height: 1.58; }
+.coach-message.is-user { align-self: flex-end; grid-template-columns: minmax(0,1fr) 34px; }
+.coach-message.is-user > span { grid-column: 2; background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.11); color: rgba(255,255,255,.62); }
+.coach-message.is-user p { grid-column: 1; grid-row: 1; border-radius: 9px 3px 9px 9px; border-color: rgba(255,95,157,.25); background: rgba(255,95,157,.1); color: white; }
+.coach-message.is-loading p::after { content: ""; display: inline-block; width: 18px; height: 5px; margin-left: 8px; background: radial-gradient(circle, var(--ui-pink-soft) 2px, transparent 3px) 0 0 / 6px 5px; animation: coach-thinking .8s steps(3) infinite; }
+@keyframes coach-thinking { to { background-position: 6px 0; } }
+
+.coach-prompts { padding: 12px 0 10px; display: flex; flex-wrap: wrap; gap: 7px; border-top: 1px solid rgba(255,255,255,.07); }
+.coach-prompts button { min-height: 34px; padding: 0 11px; border: 1px solid rgba(255,255,255,.1); border-radius: 5px; background: rgba(255,255,255,.035); color: rgba(255,255,255,.56); cursor: pointer; font-size: 12px; }
+.coach-prompts button:hover { border-color: rgba(255,95,157,.38); background: rgba(255,95,157,.08); color: white; }
+.coach-composer { border: 1px solid rgba(255,95,157,.25); border-radius: 8px; background: linear-gradient(120deg, rgba(255,95,157,.09), rgba(255,255,255,.035)); overflow: hidden; }
+.coach-composer textarea { width: 100%; min-height: 82px; max-height: 138px; padding: 15px 16px 8px; resize: vertical; border: 0; outline: 0; background: transparent; color: white; font-size: 15px; line-height: 1.48; }
+.coach-composer textarea::placeholder { color: rgba(255,255,255,.25); }
+.coach-composer:focus-within { border-color: rgba(255,95,157,.6); box-shadow: 0 0 0 3px rgba(255,95,157,.08); }
+.coach-composer > div { min-height: 54px; padding: 0 8px 8px 15px; display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.coach-composer > div > span { color: rgba(255,255,255,.26); font-size: 10px; }
+.coach-composer .command-btn { min-width: 150px; min-height: 46px; }
+
+.coach-plan { min-width: 0; min-height: 0; padding: 24px 2px 0 30px; display: flex; flex-direction: column; }
+.coach-plan > header { min-height: 34px; display: flex; align-items: center; justify-content: space-between; color: rgba(255,255,255,.45); font-size: 12px; }
+.coach-plan > header > div { display: flex; align-items: center; gap: 9px; }
+.coach-plan > header i { width: 7px; height: 7px; border-radius: 50%; background: var(--ui-pink); box-shadow: 0 0 0 5px rgba(255,95,157,.1), 0 0 14px rgba(255,95,157,.5); }
+.coach-plan > header b { color: var(--ui-pink-soft); font: 800 14px/1 "Manrope", sans-serif; letter-spacing: .06em; }
+.coach-plan-copy { padding: 20px 0 16px; }
+.coach-plan-copy > span { color: rgba(255,255,255,.25); font: 750 10px/1 "Manrope", sans-serif; letter-spacing: .16em; }
+.coach-plan-copy h3 { margin: 10px 0 8px; color: white; font: 800 clamp(26px, 3vw, 38px)/1.02 "Manrope", "PingFang SC", sans-serif; letter-spacing: -.055em; }
+.coach-plan-copy p { margin: 0; color: rgba(255,255,255,.42); font-size: 13px; line-height: 1.55; }
+.coach-plan-phases { min-height: 0; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 7px; padding-right: 6px; scrollbar-width: thin; scrollbar-color: rgba(255,95,157,.36) transparent; }
+.coach-plan-empty { min-height: 150px; display: grid; place-items: center; align-content: center; gap: 13px; border: 1px dashed rgba(255,255,255,.12); border-radius: 7px; color: rgba(255,255,255,.27); font-size: 13px; }
+.coach-plan-empty i { width: 46px; height: 46px; border: 1px solid rgba(255,95,157,.25); border-radius: 50%; box-shadow: inset 0 0 0 12px rgba(255,95,157,.05), 0 0 24px rgba(255,95,157,.08); }
+.coach-phase { min-height: 76px; padding: 12px 13px; display: grid; grid-template-columns: 38px minmax(0,1fr) auto; align-items: center; gap: 12px; border: 1px solid rgba(255,255,255,.08); border-radius: 7px; background: rgba(255,255,255,.035); }
+.coach-phase > b { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 6px; background: rgba(255,95,157,.12); color: var(--ui-pink-soft); font: 800 12px/1 "Manrope", sans-serif; }
+.coach-phase > span { min-width: 0; display: flex; flex-direction: column; gap: 5px; color: white; font-size: 15px; font-weight: 750; }
+.coach-phase > span small { overflow: hidden; color: rgba(255,255,255,.34); font-size: 11px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.coach-phase > em { color: rgba(255,255,255,.5); font: normal 750 12px/1 "Manrope", sans-serif; }
+.coach-plan-boundary { min-height: 36px; display: flex; align-items: center; gap: 8px; color: rgba(255,255,255,.27); font-size: 10px; }
+.coach-plan-boundary i { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,95,157,.65); }
+.coach-start { width: 100%; min-height: 64px; flex: 0 0 auto; font-size: 17px; }
+.coach-start:disabled, .coach-composer .command-btn:disabled { cursor: not-allowed; filter: saturate(.35); opacity: .45; transform: none; }
+.coach-plan.is-ready > header i { animation: coach-ready-pulse 1.7s ease-in-out infinite; }
+@keyframes coach-ready-pulse { 50% { box-shadow: 0 0 0 8px rgba(255,95,157,.04), 0 0 22px rgba(255,95,157,.7); } }
+
+@media (max-width: 880px) {
+  .ai-coach-screen { padding: 10px; }
+  .ai-coach-shell { height: calc(100dvh - 20px); padding: 22px 22px 24px; overflow-y: auto; scrollbar-width: none; }
+  .ai-coach-shell::-webkit-scrollbar { display: none; }
+  .ai-coach-layout { grid-template-columns: 1fr; }
+  .coach-chat { min-height: 520px; padding: 22px 0 24px; border-right: 0; border-bottom: 1px solid rgba(255,255,255,.09); }
+  .coach-plan { min-height: 540px; padding: 24px 0 0; }
+}
+
+@media (max-width: 560px) {
+  .top-ai b { display: none; }
+  .ai-coach-shell { padding: 18px 16px 20px; }
+  .ai-coach-head { min-height: 102px; }
+  .ai-coach-head h2 { font-size: 34px; }
+  .ai-coach-head > div > p { display: none; }
+  .coach-message { max-width: 94%; }
+  .coach-message p { font-size: 14px; }
+  .coach-composer > div > span { display: none; }
+  .coach-composer > div { justify-content: flex-end; }
+  .coach-composer .command-btn { min-width: 138px; }
+}
+
+/* Quick sensitivity calibration */
+.sensitivity-calibration-screen { z-index: 30; display: grid; place-items: center; padding: clamp(14px, 2vh, 24px); background: radial-gradient(circle at 72% 42%, rgba(255,95,157,.12), transparent 32%), rgba(17,8,13,.82); backdrop-filter: blur(12px) saturate(.68); }
+.sensitivity-calibration-shell { width: min(1180px, 100%); height: min(760px, calc(100dvh - 48px)); max-height: calc(100dvh - 48px); min-height: 0; padding: 25px 30px 28px; display: flex; flex-direction: column; color: white; }
+.calibration-head { position: relative; z-index: 5; min-height: 50px; padding-bottom: 16px; display: flex; align-items: flex-start; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,.09); }
+.calibration-step-label { width: max-content; padding: 7px 10px; border: 1px solid rgba(255,95,157,.27); border-radius: 4px; background: rgba(255,95,157,.08); color: var(--ui-pink-soft); font: 750 11px/1 "Manrope", sans-serif; letter-spacing: .08em; }
+
+.calibration-intro { position: relative; z-index: 2; min-height: 0; flex: 1; display: grid; grid-template-columns: 1.18fr .82fr; align-items: stretch; }
+.calibration-intro.is-hidden,
+.calibration-test-stage.is-hidden,
+.calibration-results.is-hidden { display: none !important; }
+.calibration-copy { padding: clamp(42px, 6vw, 76px) clamp(34px, 6vw, 84px) 36px 14px; display: flex; flex-direction: column; justify-content: center; border-right: 1px solid rgba(255,255,255,.09); }
+.calibration-copy h2 { max-width: 640px; margin: 22px 0 15px; color: white; font: 800 clamp(42px, 5.3vw, 72px)/.96 "Manrope", "PingFang SC", sans-serif; letter-spacing: -.065em; }
+.calibration-copy > p { max-width: 600px; margin: 0; color: rgba(255,255,255,.5); font-size: 16px; line-height: 1.7; }
+.calibration-rules { margin-top: auto; padding-top: 38px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+.calibration-rules > div { min-height: 86px; padding: 15px; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 13px; border: 1px solid rgba(255,255,255,.08); border-radius: 6px; background: rgba(255,255,255,.025); }
+.calibration-rules b { color: var(--ui-pink); font: 800 22px/1 "Manrope", sans-serif; }
+.calibration-rules span { display: flex; flex-direction: column; gap: 5px; color: rgba(255,255,255,.82); font-size: 14px; font-weight: 700; }
+.calibration-rules small { color: rgba(255,255,255,.3); font-size: 11px; font-weight: 500; }
+.calibration-setup { margin: clamp(36px, 5vw, 66px) 10px clamp(26px, 4vw, 54px) clamp(28px, 4vw, 52px); padding: 24px; align-self: center; display: grid; gap: 11px; border: 1px solid rgba(255,95,157,.2); border-radius: 8px; background: linear-gradient(145deg, rgba(255,95,157,.09), rgba(255,255,255,.025)); }
+.calibration-setup > span { margin-bottom: 5px; color: rgba(255,255,255,.42); font-size: 12px; letter-spacing: .1em; }
+.calibration-setup > label { display: grid; grid-template-columns: 1fr 130px; align-items: center; gap: 18px; color: rgba(255,255,255,.75); font-size: 14px; }
+.calibration-setup > div { min-height: 48px; padding: 0 12px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid rgba(255,255,255,.07); color: rgba(255,255,255,.42); font-size: 13px; }
+.calibration-setup > div b { color: white; font: 750 17px/1 "Manrope", sans-serif; }
+.calibration-setup > p { max-width: 300px; margin: 3px 0 8px; color: rgba(255,255,255,.32); font-size: 11px; line-height: 1.55; }
+
+.calibration-test-stage { position: relative; z-index: 2; min-height: 0; flex: 1; overflow: hidden; cursor: none; background: radial-gradient(circle at center, rgba(255,95,157,.07), transparent 30%); }
+.calibration-stage-hud { position: absolute; z-index: 5; inset: 24px 0 auto; display: grid; place-items: center; pointer-events: none; }
+.calibration-stage-hud > div { display: flex; align-items: center; gap: 12px; color: var(--ui-pink-soft); font: 750 12px/1 "Manrope", sans-serif; letter-spacing: .08em; }
+.calibration-stage-hud > div b { color: rgba(255,255,255,.45); }
+.calibration-stage-hud p { margin: 13px 0 5px; color: white; font-size: 21px; font-weight: 750; }
+.calibration-stage-hud small { color: rgba(255,255,255,.32); font-size: 12px; }
+.calibration-live-target { position: absolute; z-index: 4; left: 50%; top: 54%; width: 88px; height: 88px; display: grid; place-items: center; border: 8px solid white; border-radius: 50%; background: var(--ui-pink); box-shadow: 0 0 0 3px var(--ui-pink), 0 0 44px rgba(255,95,157,.32); transform: translate(-50%,-50%) scale(0); opacity: 0; will-change: left, transform; }
+.calibration-live-target.is-live { opacity: 1; transform: translate(-50%,-50%) scale(1); transition: transform .18s cubic-bezier(.2,.9,.2,1), opacity .12s ease; }
+.calibration-live-target.is-recorded { animation: calibration-recorded .23s ease-out; }
+.calibration-live-target i { width: 27px; height: 27px; border: 7px solid white; border-radius: 50%; }
+.calibration-live-target b { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: white; }
+.calibration-live-crosshair { position: absolute; z-index: 6; left: 50%; top: 54%; width: 42px; height: 42px; transform: translate(-50%,-50%); pointer-events: none; }
+.calibration-live-crosshair i { position: absolute; background: white; box-shadow: 0 0 7px rgba(255,95,157,.8); }
+.calibration-live-crosshair i:nth-child(1), .calibration-live-crosshair i:nth-child(2) { top: 20px; width: 10px; height: 2px; }
+.calibration-live-crosshair i:nth-child(1) { left: 0; }
+.calibration-live-crosshair i:nth-child(2) { right: 0; }
+.calibration-live-crosshair i:nth-child(3), .calibration-live-crosshair i:nth-child(4) { left: 20px; width: 2px; height: 10px; }
+.calibration-live-crosshair i:nth-child(3) { top: 0; }
+.calibration-live-crosshair i:nth-child(4) { bottom: 0; }
+.calibration-live-crosshair b { position: absolute; left: 18px; top: 18px; width: 6px; height: 6px; border-radius: 50%; background: var(--ui-pink); box-shadow: 0 0 14px var(--ui-pink); }
+.calibration-axis-line { position: absolute; left: 7%; right: 7%; top: 54%; height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,.07) 18%, rgba(255,95,157,.15) 50%, rgba(255,255,255,.07) 82%, transparent); }
+@keyframes calibration-recorded { 45% { filter: brightness(1.7); box-shadow: 0 0 0 8px rgba(255,95,157,.13), 0 0 68px rgba(255,95,157,.5); } }
+
+.calibration-results { position: relative; z-index: 2; min-height: 0; flex: 1; overflow: hidden; display: grid; grid-template-columns: .78fr 1.22fr; }
+.calibration-result-main { padding: clamp(38px, 4vw, 54px); display: flex; flex-direction: column; justify-content: flex-start; border-right: 1px solid rgba(255,255,255,.09); background: radial-gradient(circle at 48% 47%, rgba(255,95,157,.14), transparent 44%); }
+.calibration-result-main h2 { margin: 25px 0 2px; color: rgba(255,255,255,.62); font-size: 20px; }
+.calibration-result-main > strong { color: white; font: 800 clamp(78px, 9vw, 122px)/.88 "Manrope", sans-serif; letter-spacing: -.075em; text-shadow: 0 0 42px rgba(255,95,157,.25); }
+.calibration-shift { margin-top: 21px; display: flex; align-items: center; gap: 11px; color: rgba(255,255,255,.42); font-size: 13px; }
+.calibration-shift i { width: 38px; height: 1px; background: rgba(255,255,255,.16); }
+.calibration-shift b { color: var(--ui-pink-soft); }
+.calibration-result-main > p { max-width: 390px; margin: 27px 0; color: rgba(255,255,255,.7); font-size: 16px; line-height: 1.55; }
+.calibration-confidence { padding-top: 15px; display: flex; justify-content: space-between; border-top: 1px solid rgba(255,255,255,.09); color: rgba(255,255,255,.38); font-size: 12px; }
+.calibration-confidence b { color: white; }
+.calibration-conversions { min-width: 0; padding: clamp(38px, 4vw, 54px); display: flex; flex-direction: column; justify-content: flex-start; }
+.calibration-conversions > header { padding-bottom: 17px; display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,.1); color: white; font-size: 16px; font-weight: 750; }
+.calibration-conversions > header b { color: var(--ui-pink-soft); font-size: 13px; }
+.conversion-grid { margin-top: 15px; display: grid; grid-template-columns: repeat(3,1fr); gap: 9px; }
+.conversion-grid article { min-height: 150px; padding: 18px; display: flex; flex-direction: column; justify-content: center; border: 1px solid rgba(255,255,255,.09); border-radius: 7px; background: rgba(255,255,255,.035); }
+.conversion-grid article:first-child { border-color: rgba(255,95,157,.22); background: rgba(255,95,157,.08); }
+.conversion-grid span { color: rgba(255,255,255,.45); font-size: 12px; }
+.conversion-grid strong { margin: 13px 0 5px; color: white; font: 800 clamp(27px, 3vw, 38px)/1 "Manrope", sans-serif; letter-spacing: -.04em; }
+.conversion-grid article:first-child strong { color: var(--ui-pink-soft); }
+.conversion-grid small { color: rgba(255,255,255,.28); font-size: 10px; }
+.calibration-conversions > p { margin: 17px 0 22px; color: rgba(255,255,255,.34); font-size: 11px; line-height: 1.55; }
+.calibration-result-actions { display: grid; grid-template-columns: 1.15fr 1fr; gap: 9px; }
+.calibration-result-actions .command-link { grid-column: 1 / 3; justify-self: center; margin-top: 4px; }
+
 /* First-run calibration */
 .tutorial-screen {
   z-index: 24;
@@ -1692,6 +1889,41 @@ body.new-best-result .grade-emblem::after { box-shadow: 0 0 62px rgba(255,95,157
   .settings-controls .feedback-settings,
   .settings-controls .toggle-grid { grid-template-columns: 1fr; }
   .settings-footer { flex-wrap: wrap; }
+}
+
+@media (max-width: 880px) {
+  .sensitivity-calibration-entry { grid-template-columns: minmax(0,1fr) 112px 150px; }
+  .sensitivity-calibration-screen { padding: 10px; }
+  .sensitivity-calibration-shell { height: calc(100vh - 20px); min-height: 0; padding: 20px; overflow-y: auto; scrollbar-width: none; }
+  .sensitivity-calibration-shell::-webkit-scrollbar { display: none; }
+  .calibration-intro,
+  .calibration-results { grid-template-columns: 1fr; }
+  .calibration-copy,
+  .calibration-result-main { padding: 34px 16px; border-right: 0; border-bottom: 1px solid rgba(255,255,255,.09); }
+  .calibration-copy h2 { font-size: clamp(42px, 8vw, 64px); }
+  .calibration-setup { width: min(460px,100%); margin: 30px auto; }
+  .calibration-result-main { min-height: 430px; }
+  .calibration-conversions { padding: 34px 16px; }
+  .calibration-test-stage { min-height: 520px; }
+}
+
+@media (max-width: 560px) {
+  .sensitivity-calibration-entry { grid-template-columns: minmax(0,1fr) 104px; gap: 11px; }
+  .sensitivity-calibration-entry > div { grid-column: 1 / 3; }
+  .sensitivity-calibration-entry > button { height: 50px; }
+  .sensitivity-calibration-shell { padding: 16px; }
+  .calibration-head { min-height: 46px; }
+  .calibration-copy { padding-inline: 2px; }
+  .calibration-copy h2 { font-size: 42px; }
+  .calibration-copy > p { font-size: 14px; }
+  .calibration-rules { grid-template-columns: 1fr; padding-top: 26px; }
+  .calibration-rules > div { min-height: 68px; }
+  .calibration-setup { padding: 18px; }
+  .conversion-grid { grid-template-columns: 1fr; }
+  .conversion-grid article { min-height: 112px; }
+  .calibration-result-actions { grid-template-columns: 1fr; }
+  .calibration-result-actions .command-link { grid-column: 1; }
+  .calibration-test-stage { min-height: 480px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

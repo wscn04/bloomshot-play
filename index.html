@@ -4,9 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#180d14" />
-    <title>Bloomshot v1.0 — 瞄准训练场</title>
+    <title>Bloomshot v1.1 — AI 瞄准训练场</title>
     <meta name="description" content="粉白配色的解压系第一人称射击训练游戏" />
-    <link rel="stylesheet" href="./styles.css?v=1.0.1" />
+    <link rel="stylesheet" href="./styles.css?v=1.1.0" />
   </head>
   <body>
     <main id="app" aria-label="Bloomshot 射击训练游戏">
@@ -18,9 +18,12 @@
       <header class="topbar">
         <a class="brand" href="#" aria-label="Bloomshot 首页">
           <span class="brand-mark"><i></i><i></i><i></i><i></i></span>
-          <span>BLOOMSHOT</span><small>v1.0</small>
+          <span>BLOOMSHOT</span><small>v1.1</small>
         </a>
         <div class="top-actions">
+          <button id="ai-coach-open" class="top-action top-ai" type="button">
+            <span>AI 教练</span><b>定制</b>
+          </button>
           <button id="daily-start" class="top-action top-daily" type="button">
             <span>今日训练</span><b id="daily-streak">连续 0 天</b>
           </button>
@@ -110,6 +113,64 @@
         </div>
       </section>
 
+      <section id="ai-coach" class="screen ai-coach-screen is-hidden" aria-labelledby="ai-coach-title">
+        <div class="ai-coach-shell ui-cut-panel">
+          <header class="ai-coach-head">
+            <div>
+              <div class="ui-kicker"><i></i><span>智能训练编排</span><b>AI COACH</b></div>
+              <h2 id="ai-coach-title">告诉我今天想怎么练</h2>
+              <p>一句话生成训练计划　确认后直接开练</p>
+            </div>
+            <button id="ai-coach-close" class="settings-close" type="button" aria-label="关闭 AI 教练"><span>返回</span><b>×</b></button>
+          </header>
+
+          <div class="ai-coach-layout">
+            <section class="coach-chat" aria-label="AI 教练对话">
+              <div id="coach-messages" class="coach-messages" aria-live="polite">
+                <article class="coach-message is-assistant">
+                  <span><img src="./assets/ai-coach-avatar.jpg?v=1.1.0" alt="" /></span>
+                  <p>说说你的目标　我会用现有训练项目为你安排一套计划</p>
+                </article>
+              </div>
+
+              <div class="coach-prompts" aria-label="快捷需求">
+                <button type="button" data-ai-prompt="我想用 5 分钟热手，重点练快速定位">5 分钟热手</button>
+                <button type="button" data-ai-prompt="我总是拉过头，帮我练停点和大角度切换">改善拉过头</button>
+                <button type="button" data-ai-prompt="安排一套点射、切换和追踪都包含的综合训练">综合训练</button>
+              </div>
+
+              <form id="coach-form" class="coach-composer">
+                <label for="coach-input" class="sr-only">描述训练需求</label>
+                <textarea id="coach-input" rows="3" maxlength="1200" placeholder="例如　我只有 6 分钟　想重点练大角度拉枪和停点"></textarea>
+                <div>
+                  <span id="coach-input-hint">Enter 发送　Shift + Enter 换行</span>
+                  <button id="coach-send" class="command-btn command-btn-primary" type="submit"><span>生成方案</span><b>→</b></button>
+                </div>
+              </form>
+            </section>
+
+            <aside class="coach-plan" aria-label="AI 训练方案">
+              <header>
+                <div><i></i><span id="coach-plan-status">等待指令</span></div>
+                <b id="coach-plan-duration">00:00</b>
+              </header>
+              <div class="coach-plan-copy">
+                <span>TRAINING PLAN</span>
+                <h3 id="coach-plan-title">你的计划会显示在这里</h3>
+                <p id="coach-plan-summary">AI 只会调整现有玩法、训练时长与难度　不会更改灵敏度或其他个人设置</p>
+              </div>
+              <div id="coach-plan-phases" class="coach-plan-phases">
+                <div class="coach-plan-empty"><i></i><span>描述目标后生成训练流程</span></div>
+              </div>
+              <div class="coach-plan-boundary"><i></i><span>所有参数都会经过游戏规则校验</span></div>
+              <button id="coach-start" class="command-btn command-btn-primary coach-start" type="button" disabled>
+                <span>先生成训练方案</span><b>→</b>
+              </button>
+            </aside>
+          </div>
+        </div>
+      </section>
+
       <section id="tutorial" class="screen tutorial-screen is-hidden" aria-labelledby="tutorial-title">
         <div class="tutorial-shell">
           <div class="tutorial-command ui-cut-panel">
@@ -181,8 +242,16 @@
               <section class="settings-section">
                 <div class="settings-section-head"><span>瞄准控制</span><b>AIM</b></div>
                 <div class="settings-grid aim-settings">
-                  <label><span>鼠标灵敏度<small>准星移动倍率</small></span><output id="settings-sens-value">1.00</output><input id="settings-sensitivity" type="range" min="0.35" max="2.2" value="1" step="0.05" /></label>
+                  <label><span>鼠标灵敏度<small>准星移动倍率</small></span><output id="settings-sens-value">1.00</output><input id="settings-sensitivity" type="range" min="0.35" max="2.2" value="1" step="0.01" /></label>
                   <label><span>视野角度<small>训练场观察范围</small></span><output id="fov-value">73°</output><input id="fov" type="range" min="55" max="100" value="73" step="1" /></label>
+                </div>
+                <div class="sensitivity-calibration-entry">
+                  <div>
+                    <span>快速校准</span>
+                    <small>用 10 次快速定位找到更合适的鼠标灵敏度</small>
+                  </div>
+                  <label class="dpi-field" for="settings-dpi"><span>鼠标 DPI</span><input id="settings-dpi" type="number" min="100" max="32000" step="50" value="800" inputmode="numeric" /></label>
+                  <button id="calibration-open" type="button"><span>开始校准</span><b>→</b></button>
                 </div>
               </section>
 
@@ -210,6 +279,72 @@
             <button id="settings-reset" class="command-link" type="button">恢复默认设置</button>
             <span>设置会自动保存</span>
           </footer>
+        </div>
+      </section>
+
+      <section id="sensitivity-calibration" class="screen sensitivity-calibration-screen is-hidden" aria-labelledby="calibration-title">
+        <div class="sensitivity-calibration-shell ui-cut-panel">
+          <header class="calibration-head">
+            <div class="ui-kicker"><i></i><span>灵敏度校准</span><b>CALIBRATION</b></div>
+            <button id="calibration-close" class="settings-close" type="button" aria-label="退出灵敏度校准"><span>退出</span><b>×</b></button>
+          </header>
+
+          <div id="calibration-intro" class="calibration-intro">
+            <div class="calibration-copy">
+              <span class="calibration-step-label">20 秒快速测试</span>
+              <h2 id="calibration-title">找到适合你的灵敏度</h2>
+              <p>准星会从中心出发。看到目标后，一次甩到目标并停下，不要进行二次修正。</p>
+              <div class="calibration-rules">
+                <div><b>02</b><span>热身定位<small>熟悉测试节奏</small></span></div>
+                <div><b>10</b><span>正式采样<small>左右与不同角度</small></span></div>
+                <div><b>01</b><span>校准建议<small>由你决定是否应用</small></span></div>
+              </div>
+            </div>
+            <aside class="calibration-setup">
+              <span>测试准备</span>
+              <label for="calibration-dpi">鼠标 DPI<input id="calibration-dpi" type="number" min="100" max="32000" step="50" value="800" inputmode="numeric" /></label>
+              <div><span>当前灵敏度</span><b id="calibration-current-sens">1.00</b></div>
+              <div><span>测试视野</span><b id="calibration-fov">73°</b></div>
+              <p id="calibration-input-note">开始后将锁定鼠标并优先启用原始输入</p>
+              <button id="calibration-start" class="command-btn command-btn-primary" type="button"><span>开始快速校准</span><b>→</b></button>
+            </aside>
+          </div>
+
+          <div id="calibration-stage" class="calibration-test-stage is-hidden">
+            <div class="calibration-stage-hud">
+              <div><span id="calibration-phase">热身</span><b id="calibration-progress">1 / 12</b></div>
+              <p id="calibration-status">保持准星居中</p>
+              <small>一次甩到目标　停下即可</small>
+            </div>
+            <div id="calibration-live-target" class="calibration-live-target" aria-hidden="true"><i></i><b></b></div>
+            <div class="calibration-live-crosshair" aria-hidden="true"><i></i><i></i><i></i><i></i><b></b></div>
+            <div class="calibration-axis-line" aria-hidden="true"></div>
+          </div>
+
+          <div id="calibration-results" class="calibration-results is-hidden">
+            <section class="calibration-result-main">
+              <span class="calibration-step-label">校准完成</span>
+              <h2>建议灵敏度</h2>
+              <strong id="calibration-recommended">0.93</strong>
+              <div class="calibration-shift"><span id="calibration-before">当前 1.00</span><i></i><b id="calibration-change">降低 7%</b></div>
+              <p id="calibration-summary">你的第一次定位通常会略微超过目标</p>
+              <div class="calibration-confidence"><span>结果可信度</span><b id="calibration-confidence">高 · 一致性 86%</b></div>
+            </section>
+            <section class="calibration-conversions">
+              <header><span>游戏灵敏度换算</span><b id="calibration-result-dpi">800 DPI</b></header>
+              <div class="conversion-grid">
+                <article><span>物理距离</span><strong id="calibration-cm360">12.1</strong><small>cm / 360°</small></article>
+                <article><span>CS2</span><strong id="calibration-cs2">4.00</strong><small>游戏内灵敏度</small></article>
+                <article><span>无畏契约</span><strong id="calibration-valorant">1.26</strong><small>游戏内灵敏度</small></article>
+              </div>
+              <p id="calibration-conversion-note">换算按相同 DPI 计算。浏览器输入与游戏环境可能存在差异，建议进入对应游戏后做小幅验证。</p>
+              <div class="calibration-result-actions">
+                <button id="calibration-apply" class="command-btn command-btn-primary" type="button"><span>应用建议</span><b>✓</b></button>
+                <button id="calibration-retry" class="command-btn" type="button"><span>再测一次</span><b>↻</b></button>
+                <button id="calibration-keep" class="command-link" type="button">保持当前灵敏度</button>
+              </div>
+            </section>
+          </div>
         </div>
       </section>
 
@@ -290,6 +425,6 @@
         }, 1500);
       });
     </script>
-    <script type="module" src="./game.js?v=1.0.0"></script>
+    <script type="module" src="./game.js?v=1.1.0"></script>
   </body>
 </html>

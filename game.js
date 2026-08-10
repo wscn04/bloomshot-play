@@ -1,4 +1,14 @@
 import * as THREE from "./vendor/three.module.js";
+import {
+  TRAINING_RECIPE_SCHEMA_VERSION,
+  TRAINING_RECIPE_CAPABILITIES,
+  validateTrainingRecipe,
+} from "./shared/training-recipe-schema.js";
+import {
+  advanceTargetActiveAge,
+  resolveTargetBaseScale,
+  resolveRuntimeDifficulty,
+} from "./shared/training-runtime.js";
 
 window.__bloomshotLoaded = true;
 
@@ -81,6 +91,35 @@ const ui = {
   settingsReset: $("#settings-reset"),
   settingsSensitivity: $("#settings-sensitivity"),
   settingsSensitivityValue: $("#settings-sens-value"),
+  settingsDpi: $("#settings-dpi"),
+  calibrationOpen: $("#calibration-open"),
+  calibrationScreen: $("#sensitivity-calibration"),
+  calibrationClose: $("#calibration-close"),
+  calibrationIntro: $("#calibration-intro"),
+  calibrationStage: $("#calibration-stage"),
+  calibrationResults: $("#calibration-results"),
+  calibrationDpi: $("#calibration-dpi"),
+  calibrationCurrentSens: $("#calibration-current-sens"),
+  calibrationFov: $("#calibration-fov"),
+  calibrationInputNote: $("#calibration-input-note"),
+  calibrationStart: $("#calibration-start"),
+  calibrationPhase: $("#calibration-phase"),
+  calibrationProgress: $("#calibration-progress"),
+  calibrationStatus: $("#calibration-status"),
+  calibrationTarget: $("#calibration-live-target"),
+  calibrationRecommended: $("#calibration-recommended"),
+  calibrationBefore: $("#calibration-before"),
+  calibrationChange: $("#calibration-change"),
+  calibrationSummary: $("#calibration-summary"),
+  calibrationConfidence: $("#calibration-confidence"),
+  calibrationResultDpi: $("#calibration-result-dpi"),
+  calibrationCm360: $("#calibration-cm360"),
+  calibrationCs2: $("#calibration-cs2"),
+  calibrationValorant: $("#calibration-valorant"),
+  calibrationConversionNote: $("#calibration-conversion-note"),
+  calibrationApply: $("#calibration-apply"),
+  calibrationRetry: $("#calibration-retry"),
+  calibrationKeep: $("#calibration-keep"),
   fov: $("#fov"),
   fovValue: $("#fov-value"),
   volume: $("#volume"),
@@ -94,6 +133,20 @@ const ui = {
   lowGraphics: $("#low-graphics"),
   settingsPreview: $("#settings-preview"),
   settingsPreviewStatus: $("#settings-preview-status"),
+  aiCoachOpen: $("#ai-coach-open"),
+  aiCoachScreen: $("#ai-coach"),
+  aiCoachClose: $("#ai-coach-close"),
+  coachMessages: $("#coach-messages"),
+  coachForm: $("#coach-form"),
+  coachInput: $("#coach-input"),
+  coachSend: $("#coach-send"),
+  coachPlan: $(".coach-plan"),
+  coachPlanStatus: $("#coach-plan-status"),
+  coachPlanDuration: $("#coach-plan-duration"),
+  coachPlanTitle: $("#coach-plan-title"),
+  coachPlanSummary: $("#coach-plan-summary"),
+  coachPlanPhases: $("#coach-plan-phases"),
+  coachStart: $("#coach-start"),
   dailyStart: $("#daily-start"),
   dailyStreak: $("#daily-streak"),
   dailyProgress: $("#daily-progress"),
@@ -112,6 +165,12 @@ const HISTORY_KEY = "bloomshot-history-v03";
 const LEGACY_HISTORY_KEY = "bloomshot-history-v02";
 const BEST_KEY = "bloomshot-best-v03";
 const DAILY_KEY = "bloomshot-daily-v03";
+const CALIBRATION_RADIANS_PER_COUNT = 0.00165;
+const CALIBRATION_WARMUPS = 2;
+const CALIBRATION_TRIALS = 10;
+const CALIBRATION_ANGLES = [-24, 30, -18, 26, -34, 22, 30, -26, 18, 34, -30, 22];
+const CS2_YAW_DEGREES = 0.022;
+const VALORANT_YAW_DEGREES = 0.07;
 const DAILY_MODES = ["flick", "switch", "track"];
 const TRAINING_MODES = {
   flick: { name: "快速点射", code: "FLICK", duration: 45, targetCount: 3, targetLabel: "动态三靶", tagline: "快速发现 连续命中", objective: "在 45 秒内快速击中连续出现的目标", startLabel: "开始训练", timed: true },
@@ -126,8 +185,16 @@ const TUTORIAL_MODE_COPY = {
   track: { title: "按住追踪", note: "保持左键持续跟随移动目标" },
   zen: { title: "自由练习", note: "按自己的节奏持续命中目标" },
 };
+const AI_MODE_LABELS = { flick: "点射", switch: "切换", track: "追踪", zen: "自由" };
+const AI_MOVEMENT_LABELS = { static: "固定不动", horizontal: "水平横移", vertical: "上下移动", figure8: "8 字移动", circle: "环绕移动", free: "自由移动", waypoints: "自定义路径" };
+const AI_SPAWN_LABELS = { free: "自由刷新", horizontalLine: "水平线刷新", verticalLine: "垂直线刷新", grid: "网格刷新", custom: "自定义点位" };
+const AI_MOVEMENT_PATTERNS = new Set(TRAINING_RECIPE_CAPABILITIES.movementPatterns);
+const AI_SPAWN_PATTERNS = new Set(TRAINING_RECIPE_CAPABILITIES.spawnPatterns);
+const AI_SPAWN_ORDERS = new Set(TRAINING_RECIPE_CAPABILITIES.spawnOrders);
+const AI_TARGET_SIZE_LABELS = { fixed: "\u56fa\u5b9a\u5927\u5c0f", combo: "\u968f\u8fde\u51fb\u7f29\u5c0f" };
 const defaultSettings = {
   sensitivity: 1,
+  dpi: 800,
   fov: 73,
   volume: 0.8,
   particles: 1,
@@ -216,11 +283,48 @@ const state = {
   dailyIndex: 0,
   dailyTotals: null,
   resultMode: "flick",
+  aiActive: false,
+  aiRecipe: null,
+  aiPhaseIndex: 0,
+  aiPhaseElapsed: 0,
+  aiSpawnCursor: 0,
+};
+
+const calibration = {
+  phase: "intro",
+  trialIndex: -1,
+  samples: [],
+  targetAngle: 0,
+  observedYaw: 0,
+  directedPeak: 0,
+  totalTravel: 0,
+  reverseTravel: 0,
+  movementStarted: false,
+  movementStartedAt: 0,
+  armAt: 0,
+  settleTimer: 0,
+  advanceTimer: 0,
+  countdownTimer: 0,
+  rawInput: false,
+  leaving: false,
+  accepting: false,
+  previousSensitivity: 1,
+  recommendation: 1,
+  result: null,
+};
+
+const coach = {
+  returnScreen: "menu",
+  messages: [],
+  recipe: null,
+  loading: false,
 };
 
 let bestScore = bestScores.flick;
 ui.menuBest.textContent = bestScore ? bestScore.toLocaleString("zh-CN") : "—";
 ui.settingsSensitivity.value = String(settings.sensitivity);
+ui.settingsDpi.value = String(settings.dpi);
+ui.calibrationDpi.value = String(settings.dpi);
 ui.fov.value = String(settings.fov);
 ui.volume.value = String(settings.volume);
 ui.particles.value = String(settings.particles);
@@ -244,6 +348,31 @@ function median(values) {
   return Math.round(sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2);
 }
 
+function weightedMedian(entries) {
+  if (!entries.length) return 0;
+  const sorted = [...entries].sort((a, b) => a.value - b.value);
+  const totalWeight = sorted.reduce((sum, entry) => sum + entry.weight, 0);
+  let accumulated = 0;
+  for (const entry of sorted) {
+    accumulated += entry.weight;
+    if (accumulated >= totalWeight / 2) return entry.value;
+  }
+  return sorted.at(-1).value;
+}
+
+function medianFloat(values) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+
+function clampDpi(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 800;
+  return Math.round(THREE.MathUtils.clamp(parsed, 100, 32000));
+}
+
 function localDateKey(date = new Date()) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -265,6 +394,29 @@ function updateDailyCard() {
 function saveSettings() {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
   localStorage.setItem("bloomshot-sensitivity", String(settings.sensitivity));
+}
+
+function getAiPhase() {
+  return state.aiActive ? state.aiRecipe?.phases?.[state.aiPhaseIndex] || null : null;
+}
+
+function getActiveTrainingConfig() {
+  const base = TRAINING_MODES[state.trainingMode] || TRAINING_MODES.flick;
+  const phase = getAiPhase();
+  if (!phase) return base;
+  return {
+    ...base,
+    ...phase,
+    name: phase.label || base.name,
+    code: "AI",
+    timed: true,
+    adaptive: false,
+    tracking: phase.baseMode === "track",
+  };
+}
+
+function isTimedSession() {
+  return state.aiActive || getActiveTrainingConfig().timed;
 }
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
@@ -428,6 +580,7 @@ const targetGeometries = {
   core: new THREE.CircleGeometry(0.17, 32),
   ring: new THREE.TorusGeometry(0.66, 0.055, 12, 50),
   halo: new THREE.RingGeometry(0.72, 0.78, 48),
+  challengeBall: new THREE.SphereGeometry(0.42, 28, 20),
 };
 const targetMaterials = {
   body: new THREE.MeshPhysicalMaterial({ color: palette.pink, roughness: 0.28, clearcoat: 0.82, clearcoatRoughness: 0.16 }),
@@ -435,6 +588,7 @@ const targetMaterials = {
   core: new THREE.MeshStandardMaterial({ color: palette.hot, emissive: palette.hot, emissiveIntensity: 0.24 }),
   ring: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.18 }),
   halo: new THREE.MeshBasicMaterial({ color: palette.rose, transparent: true, opacity: 0.3, side: THREE.DoubleSide }),
+  challengeBall: new THREE.MeshStandardMaterial({ color: palette.hot, emissive: palette.hot, emissiveIntensity: 0.68, roughness: 0.28 }),
 };
 const targetPool = [];
 
@@ -458,9 +612,17 @@ function makeTarget() {
   halo.position.z = -0.04;
   target.add(halo);
 
+  const challengeBall = new THREE.Mesh(targetGeometries.challengeBall, targetMaterials.challengeBall);
+  challengeBall.position.z = 0.04;
+  challengeBall.visible = false;
+  target.add(challengeBall);
+
   target.userData.isTarget = true;
   target.userData.born = performance.now();
   target.userData.phase = Math.random() * Math.PI * 2;
+  target.userData.comboProgress = 0;
+  target.userData.standardParts = [body, face, core, ring, halo];
+  target.userData.challengeBall = challengeBall;
   target.traverse((part) => { part.userData.targetRoot = target; });
   target.scale.setScalar(0.01);
   return target;
@@ -471,6 +633,13 @@ function acquireTarget() {
   target.userData.dead = false;
   target.userData.born = performance.now();
   target.userData.phase = Math.random() * Math.PI * 2;
+  target.userData.comboProgress = 0;
+  for (const part of target.userData.standardParts) {
+    part.visible = true;
+    part.scale.setScalar(1);
+  }
+  target.userData.challengeBall.visible = false;
+  target.userData.challengeBall.scale.setScalar(0.42);
   target.scale.setScalar(0.01);
   return target;
 }
@@ -480,14 +649,51 @@ function releaseTarget(target) {
   if (targetPool.length < 8) targetPool.push(target);
 }
 
+function defaultSpawnPoints(pattern) {
+  if (pattern === "horizontalLine") return [-0.84, -0.42, 0, 0.42, 0.84].map((x) => ({ x, y: 0 }));
+  if (pattern === "verticalLine") return [-0.8, -0.4, 0, 0.4, 0.8].map((y) => ({ x: 0, y }));
+  if (pattern === "grid") return [-0.72, 0, 0.72].flatMap((x) => [-0.62, 0, 0.62].map((y) => ({ x, y })));
+  return [];
+}
+
+function configuredSpawnPosition(config) {
+  const pattern = AI_SPAWN_PATTERNS.has(config.spawnPattern) ? config.spawnPattern : "free";
+  if (pattern === "free") return null;
+  const sourcePoints = Array.isArray(config.spawnPoints) && config.spawnPoints.length
+    ? config.spawnPoints
+    : defaultSpawnPoints(pattern);
+  if (!sourcePoints.length) return null;
+
+  const order = AI_SPAWN_ORDERS.has(config.spawnOrder) ? config.spawnOrder : "random";
+  const jitter = THREE.MathUtils.clamp(Number(config.spawnJitter) || 0, 0, 0.25);
+  let candidate = null;
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const index = order === "sequential"
+      ? state.aiSpawnCursor++ % sourcePoints.length
+      : Math.floor(Math.random() * sourcePoints.length);
+    const source = sourcePoints[index] || { x: 0, y: 0 };
+    const lineX = pattern === "verticalLine" ? sourcePoints[0]?.x || 0 : source.x;
+    const lineY = pattern === "horizontalLine" ? sourcePoints[0]?.y || 0 : source.y;
+    const normalizedX = THREE.MathUtils.clamp(lineX + THREE.MathUtils.randFloatSpread(jitter * 2), -1, 1);
+    const normalizedY = THREE.MathUtils.clamp(lineY + THREE.MathUtils.randFloatSpread(jitter * 2), -1, 1);
+    candidate = new THREE.Vector3(normalizedX * 6.2, 2.75 + normalizedY * 2.35, -10.8);
+    if (activeTargets.every((target) => target.position.distanceToSquared(candidate) > 2.1)) break;
+  }
+  if (candidate) lastTargetPosition.copy(candidate);
+  return candidate;
+}
+
 function randomTargetPosition() {
+  const config = state.aiActive ? getActiveTrainingConfig() : null;
+  const configured = config ? configuredSpawnPosition(config) : null;
+  if (configured) return configured;
   const candidate = new THREE.Vector3();
   if (state.trainingMode === "track") {
     candidate.set(0, 2.45, -10.8);
     return candidate;
   }
   for (let attempt = 0; attempt < 24; attempt += 1) {
-    const z = THREE.MathUtils.randFloat(-13.6, -7.4);
+    const z = config?.targetSizeMode === "fixed" ? -10.8 : THREE.MathUtils.randFloat(-13.6, -7.4);
     const depthScale = THREE.MathUtils.mapLinear(z, -13.6, -7.4, 1, 0.68);
     let x = THREE.MathUtils.randFloat(-6.3 * depthScale, 6.3 * depthScale);
     const nextSide = Math.sign(x) || 1;
@@ -506,18 +712,76 @@ function randomTargetPosition() {
   return candidate.clone();
 }
 
+function comboTargetProgress(combo = state.combo) {
+  if (getActiveTrainingConfig().targetSizeMode === "fixed") return 0;
+  const tracking = state.trainingMode === "track";
+  const startCombo = tracking ? 6 : 3;
+  const fullCombo = tracking ? 36 : 24;
+  return THREE.MathUtils.smoothstep(combo, startCombo, fullCombo);
+}
+
+function comboChallengeBonus(combo = state.combo, tracking = false) {
+  const progress = comboTargetProgress(combo);
+  const maximumBonus = tracking ? 18 : 160;
+  return Math.round(maximumBonus * Math.pow(progress, tracking ? 1.2 : 1.35));
+}
+
+function applyTargetComboAppearance(target, delta = 0, instant = false) {
+  const desiredProgress = comboTargetProgress();
+  const blend = instant ? 1 : 1 - Math.exp(-Math.max(0, delta) * 9);
+  target.userData.comboProgress = THREE.MathUtils.lerp(
+    target.userData.comboProgress || 0,
+    desiredProgress,
+    blend,
+  );
+
+  const progress = target.userData.comboProgress;
+  const tracking = state.trainingMode === "track";
+  const configuredMinimum = Number(getActiveTrainingConfig().comboMinScale);
+  const minimumScale = Number.isFinite(configuredMinimum) ? configuredMinimum : tracking ? 0.52 : 0.38;
+  const challengeScale = THREE.MathUtils.lerp(1, minimumScale, progress);
+  const ballProgress = THREE.MathUtils.smoothstep(progress, 0.68, 0.96);
+  const standardScale = THREE.MathUtils.lerp(1, 0.66, ballProgress);
+  const showStandardTarget = ballProgress < 0.96;
+
+  for (const part of target.userData.standardParts) {
+    part.visible = showStandardTarget;
+    part.scale.setScalar(standardScale);
+  }
+  target.userData.challengeBall.visible = ballProgress > 0.015;
+  target.userData.challengeBall.scale.setScalar(THREE.MathUtils.lerp(0.42, 1, ballProgress));
+  return challengeScale;
+}
+
 function spawnTarget() {
+  const config = getActiveTrainingConfig();
   const target = acquireTarget();
   target.position.copy(randomTargetPosition());
   target.userData.baseY = target.position.y;
   target.userData.baseX = target.position.x;
-  target.userData.pathSpeed = 0.82 + state.difficultyLevel * 0.1;
-  target.userData.pathWidth = 2.2 + state.difficultyLevel * 0.28;
-  target.userData.pathHeight = 1.1 + state.difficultyLevel * 0.16;
-  if (state.trainingMode === "track") target.userData.baseScale = 0.84;
-  else if (state.trainingMode === "switch") target.userData.baseScale = 0.92;
-  else if (state.trainingMode === "zen") target.userData.baseScale = 1.16 - (state.difficultyLevel - 1) * 0.075;
-  else target.userData.baseScale = 1;
+  target.userData.pathSpeed = (0.82 + state.difficultyLevel * 0.1) * (Number(config.movementSpeed) || 1);
+  target.userData.movementWidth = THREE.MathUtils.clamp(Number(config.movementWidth) || 1, 0.25, 2);
+  target.userData.movementHeight = THREE.MathUtils.clamp(Number(config.movementHeight) || 1, 0.25, 2);
+  target.userData.pathWidth = (2.2 + state.difficultyLevel * 0.28) * target.userData.movementWidth;
+  target.userData.pathHeight = (1.1 + state.difficultyLevel * 0.16) * target.userData.movementHeight;
+  target.userData.lifetimeMs = THREE.MathUtils.clamp(Number(config.targetLifetime) || 0, 0, 12) * 1000;
+  target.userData.activeAgeMs = 0;
+  const defaultMovement = state.trainingMode === "track" ? "free" : "static";
+  target.userData.movementPattern = AI_MOVEMENT_PATTERNS.has(config.movementPattern) ? config.movementPattern : defaultMovement;
+  target.userData.movementPoints = Array.isArray(config.movementPoints)
+    ? config.movementPoints.slice(0, 12).map((point) => ({
+        x: THREE.MathUtils.clamp(Number(point.x) || 0, -1, 1),
+        y: THREE.MathUtils.clamp(Number(point.y) || 0, -1, 1),
+      }))
+    : [];
+  target.userData.baseScale = resolveTargetBaseScale({
+    baseMode: state.trainingMode,
+    difficulty: state.difficultyLevel,
+    targetScale: config.targetScale,
+    targetSizeMode: config.targetSizeMode,
+  });
+  target.userData.comboProgress = comboTargetProgress();
+  applyTargetComboAppearance(target, 0, true);
   target.lookAt(camera.position);
   scene.add(target);
   activeTargets.push(target);
@@ -528,7 +792,7 @@ function clearTargets() {
 }
 
 function fillTargets() {
-  const targetCount = TRAINING_MODES[state.trainingMode]?.targetCount || 3;
+  const targetCount = getActiveTrainingConfig().targetCount || 3;
   while (activeTargets.length < targetCount) spawnTarget();
 }
 
@@ -861,9 +1125,13 @@ function releaseTrigger() {
   state.trackingFeedbackCooldown = 0;
   if (state.trainingMode === "track") {
     state.combo = 0;
-    state.difficultyLevel = 1;
+    state.difficultyLevel = resolveRuntimeDifficulty({
+      aiActive: state.aiActive,
+      configuredDifficulty: getActiveTrainingConfig().difficulty,
+      adaptiveDifficulty: 1,
+    });
     document.body.dataset.flow = "0";
-    ui.flowLabel.textContent = "FLOW 1";
+    ui.flowLabel.textContent = "FLOW " + state.difficultyLevel;
   }
   ui.trackEnergy.style.setProperty("--track-energy-angle", "0deg");
   document.body.classList.remove("tracking-full");
@@ -931,7 +1199,7 @@ function retrigger(element, className) {
 function updateHud() {
   const accuracy = state.shots ? Math.round((state.hits / state.shots) * 100) : 100;
   ui.score.textContent = String(state.score).padStart(5, "0");
-  if (!TRAINING_MODES[state.trainingMode].timed) {
+  if (!isTimedSession()) {
     ui.time.textContent = "∞";
     ui.timeBar.style.transform = `scaleX(${0.35 + Math.sin(state.elapsed * 1.8) * 0.12})`;
   } else {
@@ -952,12 +1220,14 @@ function getFlowTier() {
 
 function refreshFlowLevel() {
   const performanceLevel = Math.min(5, 1 + Math.floor(state.combo / 8));
-  if (TRAINING_MODES[state.trainingMode].adaptive) state.difficultyLevel = Math.max(state.difficultyLevel, performanceLevel);
+  const config = getActiveTrainingConfig();
+  if (state.aiActive) state.difficultyLevel = Number(config.difficulty) || 1;
+  else if (config.adaptive) state.difficultyLevel = Math.max(state.difficultyLevel, performanceLevel);
   else state.difficultyLevel = performanceLevel;
 }
 
 function updateAdaptiveDifficulty(hit, reaction = 9999) {
-  if (!TRAINING_MODES[state.trainingMode].adaptive) return;
+  if (!getActiveTrainingConfig().adaptive) return;
   if (hit && reaction < 760) {
     state.adaptiveHits += 1;
     state.adaptiveMisses = 0;
@@ -975,7 +1245,7 @@ function updateAdaptiveDifficulty(hit, reaction = 9999) {
   }
 }
 
-function showHitFeedback(tier) {
+function showHitFeedback(tier, challengeBonus = 0) {
   const wordSets = [
     ["命中", "精准", "漂亮"],
     ["很稳", "节奏在线", "继续"],
@@ -983,7 +1253,14 @@ function showHitFeedback(tier) {
     ["火力全开", "势不可挡", "完美发挥"],
   ];
   const words = wordSets[tier];
-  ui.feedback.textContent = words[Math.floor(Math.random() * words.length)];
+  const word = words[Math.floor(Math.random() * words.length)];
+  ui.feedback.textContent = challengeBonus >= 140
+    ? `小球命中 · +${challengeBonus}`
+    : challengeBonus >= 60
+      ? `${word} · 高难 +${challengeBonus}`
+      : challengeBonus >= 20
+        ? `${word} · +${challengeBonus}`
+        : word;
   retrigger(ui.feedback, "show");
   if (settings.flash > 0) retrigger(ui.flash, "pop");
   retrigger(ui.crosshair, "hit");
@@ -1037,7 +1314,11 @@ function updateTrackingFeedback(active, target, delta) {
     if (nextStage === 4) state.trackingFeedbackTimer = 0;
   }
   state.trackingStage = nextStage;
-  state.difficultyLevel = Math.min(5, nextStage + 1);
+  state.difficultyLevel = resolveRuntimeDifficulty({
+    aiActive: state.aiActive,
+    configuredDifficulty: getActiveTrainingConfig().difficulty,
+    adaptiveDifficulty: nextStage + 1,
+  });
   document.body.dataset.flow = String(Math.min(3, nextStage));
   document.body.classList.toggle("tracking-full", nextStage === 4);
 
@@ -1076,7 +1357,7 @@ function removeTarget(target) {
 function completeTargetHit(target) {
   if (!target || target.userData.dead) return;
   target.userData.dead = true;
-  const age = performance.now() - target.userData.born;
+  const age = Number(target.userData.activeAgeMs) || 0;
   state.reactionTimes.push(age);
   registerZoneHit(target, age);
   state.lastHitAt = performance.now();
@@ -1087,20 +1368,22 @@ function completeTargetHit(target) {
   updateAdaptiveDifficulty(true, age);
   const speedBonus = Math.max(0, Math.round(64 - age / 19));
   const comboBonus = Math.min(48, Math.max(0, state.combo - 1) * 3);
+  const challengeBonus = comboChallengeBonus(state.combo);
   const modeBonus = state.trainingMode === "switch" ? 18 : 0;
-  state.score += 100 + speedBonus + comboBonus + modeBonus;
+  state.score += 100 + speedBonus + comboBonus + challengeBonus + modeBonus;
   const tier = getFlowTier();
   state.hitStop = 0.026;
   state.shake = settings.cameraShake ? 1 : 0;
   playHit(state.combo, THREE.MathUtils.clamp(target.position.x / 7, -0.35, 0.35));
-  showHitFeedback(tier);
+  showHitFeedback(tier, challengeBonus);
   createBloom(target.position, tier);
   removeTarget(target);
   spawnTarget();
 }
 
 function shoot() {
-  if (state.mode !== "playing" || TRAINING_MODES[state.trainingMode].tracking) return;
+  const config = getActiveTrainingConfig();
+  if (state.mode !== "playing" || config.tracking) return;
   state.shots += 1;
   state.recoil = 1;
   playShot();
@@ -1115,9 +1398,9 @@ function shoot() {
     completeTargetHit(target);
   } else {
     state.combo = 0;
-    state.difficultyLevel = TRAINING_MODES[state.trainingMode].adaptive ? state.difficultyLevel : 1;
+    state.difficultyLevel = config.adaptive ? state.difficultyLevel : state.aiActive ? Number(config.difficulty) || 1 : 1;
     updateAdaptiveDifficulty(false);
-    if (TRAINING_MODES[state.trainingMode].timed) state.score = Math.max(0, state.score - 15);
+    if (isTimedSession()) state.score = Math.max(0, state.score - 15);
     document.body.dataset.flow = "0";
     ui.flowLabel.textContent = `FLOW ${state.difficultyLevel}`;
     playMiss();
@@ -1153,7 +1436,7 @@ function updateTracking(delta) {
     state.trackingBestStreak = Math.max(state.trackingBestStreak, state.trackingStreak);
     state.combo = Math.min(99, Math.floor(state.trackingStreak / 2));
     state.bestCombo = Math.max(state.bestCombo, state.combo);
-    state.score += 12 + state.difficultyLevel * 2;
+    state.score += 12 + state.difficultyLevel * 2 + comboChallengeBonus(state.combo, true);
   } else {
     state.trackingMissStreak += 1;
     if (state.trackingMissStreak >= 3) {
@@ -1172,13 +1455,15 @@ function setScreen(name) {
   ui.tutorial.classList.toggle("is-hidden", name !== "tutorial");
   ui.pause.classList.toggle("is-hidden", name !== "pause");
   ui.settings.classList.toggle("is-hidden", name !== "settings");
+  ui.aiCoachScreen.classList.toggle("is-hidden", name !== "ai-coach");
+  ui.calibrationScreen.classList.toggle("is-hidden", name !== "calibration");
   ui.dailyTransition.classList.toggle("is-hidden", name !== "daily");
   ui.results.classList.toggle("is-hidden", name !== "results");
   const inSession = name === "playing" || name === "pause";
   ui.hud.classList.toggle("is-hidden", !inSession);
   ui.crosshair.classList.toggle("is-hidden", !inSession);
   ui.combo.classList.toggle("is-hidden", !inSession);
-  ui.endSession.classList.toggle("is-hidden", !(inSession && state.trainingMode === "zen"));
+  ui.endSession.classList.toggle("is-hidden", !(inSession && state.trainingMode === "zen" && !state.aiActive));
   document.body.classList.toggle("game-active", inSession);
 }
 
@@ -1194,9 +1479,488 @@ function requestAimLock() {
   }
 }
 
+function clearCalibrationTimers() {
+  window.clearTimeout(calibration.settleTimer);
+  window.clearTimeout(calibration.advanceTimer);
+  window.clearTimeout(calibration.countdownTimer);
+  calibration.settleTimer = 0;
+  calibration.advanceTimer = 0;
+  calibration.countdownTimer = 0;
+}
+
+function setCalibrationView(view) {
+  calibration.phase = view;
+  ui.calibrationIntro.classList.toggle("is-hidden", view !== "intro");
+  ui.calibrationStage.classList.toggle("is-hidden", view !== "stage");
+  ui.calibrationResults.classList.toggle("is-hidden", view !== "results");
+}
+
+function syncCalibrationSetup() {
+  const dpi = clampDpi(settings.dpi);
+  settings.dpi = dpi;
+  ui.settingsDpi.value = String(dpi);
+  ui.calibrationDpi.value = String(dpi);
+  ui.calibrationCurrentSens.textContent = Number(settings.sensitivity).toFixed(2);
+  ui.calibrationFov.textContent = `${settings.fov}°`;
+}
+
+function openSensitivityCalibration() {
+  clearCalibrationTimers();
+  calibration.leaving = false;
+  calibration.previousSensitivity = Number(settings.sensitivity);
+  calibration.result = null;
+  syncCalibrationSetup();
+  setCalibrationView("intro");
+  state.mode = "calibration";
+  gun.visible = false;
+  setScreen("calibration");
+}
+
+function closeSensitivityCalibration() {
+  clearCalibrationTimers();
+  calibration.leaving = true;
+  calibration.phase = "intro";
+  calibration.samples = [];
+  calibration.accepting = false;
+  ui.calibrationTarget.classList.remove("is-live", "is-recorded");
+  if (document.pointerLockElement === renderer.domElement) document.exitPointerLock?.();
+  state.mode = "settings";
+  setScreen("settings");
+  gun.visible = Boolean(settings.showGun);
+  syncCalibrationSetup();
+}
+
+function fallbackCalibrationPointerLock() {
+  calibration.rawInput = false;
+  ui.calibrationInputNote.textContent = "当前浏览器未启用原始输入，结果仍可使用，但建议在游戏内做小幅验证";
+  try {
+    const request = renderer.domElement.requestPointerLock?.();
+    request?.catch?.(() => {
+      ui.calibrationStatus.textContent = "鼠标锁定失败，请点击退出后重新尝试";
+    });
+  } catch {
+    ui.calibrationStatus.textContent = "当前环境不支持鼠标锁定";
+  }
+}
+
+function requestCalibrationPointerLock() {
+  ensureAudio();
+  calibration.rawInput = true;
+  ui.calibrationStatus.textContent = "正在锁定鼠标";
+  try {
+    const request = renderer.domElement.requestPointerLock?.({ unadjustedMovement: true });
+    request?.catch?.(() => fallbackCalibrationPointerLock());
+  } catch {
+    fallbackCalibrationPointerLock();
+  }
+}
+
+function startSensitivityCalibration() {
+  settings.dpi = clampDpi(ui.calibrationDpi.value);
+  saveSettings();
+  syncCalibrationSetup();
+  clearCalibrationTimers();
+  calibration.leaving = false;
+  calibration.previousSensitivity = Number(settings.sensitivity);
+  calibration.trialIndex = -1;
+  calibration.samples = [];
+  calibration.result = null;
+  calibration.accepting = false;
+  ui.calibrationInputNote.textContent = "开始后将锁定鼠标并优先启用原始输入";
+  setCalibrationView("stage");
+  requestCalibrationPointerLock();
+}
+
+function updateCalibrationTargetPosition() {
+  if (calibration.phase !== "stage") return;
+  const rect = ui.calibrationStage.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  const verticalFov = THREE.MathUtils.degToRad(Number(settings.fov));
+  const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * (rect.width / rect.height));
+  const relativeAngle = calibration.targetAngle - calibration.observedYaw;
+  const normalizedX = -Math.tan(relativeAngle) / Math.tan(horizontalFov / 2);
+  const x = THREE.MathUtils.clamp(rect.width * (0.5 + normalizedX * 0.5), -70, rect.width + 70);
+  ui.calibrationTarget.style.left = `${x}px`;
+  ui.calibrationTarget.style.top = `${rect.height * 0.54}px`;
+}
+
+function beginCalibrationTrial() {
+  if (state.mode !== "calibration" || calibration.phase !== "stage") return;
+  if (document.pointerLockElement !== renderer.domElement) {
+    ui.calibrationStatus.textContent = "点击画面重新锁定鼠标";
+    return;
+  }
+
+  calibration.trialIndex += 1;
+  if (calibration.trialIndex >= CALIBRATION_ANGLES.length) {
+    finishSensitivityCalibration();
+    return;
+  }
+
+  const isWarmup = calibration.trialIndex < CALIBRATION_WARMUPS;
+  const visibleIndex = isWarmup ? calibration.trialIndex + 1 : calibration.trialIndex - CALIBRATION_WARMUPS + 1;
+  ui.calibrationPhase.textContent = isWarmup ? "热身" : "正式采样";
+  ui.calibrationProgress.textContent = `${visibleIndex} / ${isWarmup ? CALIBRATION_WARMUPS : CALIBRATION_TRIALS}`;
+  ui.calibrationStatus.textContent = isWarmup ? "熟悉节奏" : "准备定位";
+
+  calibration.targetAngle = THREE.MathUtils.degToRad(CALIBRATION_ANGLES[calibration.trialIndex]);
+  calibration.observedYaw = 0;
+  calibration.directedPeak = 0;
+  calibration.totalTravel = 0;
+  calibration.reverseTravel = 0;
+  calibration.movementStarted = false;
+  calibration.movementStartedAt = 0;
+  calibration.armAt = performance.now() + 220;
+  calibration.accepting = true;
+  state.yaw = 0;
+  state.pitch = 0;
+  camera.rotation.set(0, 0, 0, "YXZ");
+  ui.calibrationTarget.classList.remove("is-live", "is-recorded");
+  updateCalibrationTargetPosition();
+  requestAnimationFrame(() => ui.calibrationTarget.classList.add("is-live"));
+}
+
+function retryCalibrationTrial(message) {
+  clearCalibrationTimers();
+  calibration.accepting = false;
+  calibration.trialIndex -= 1;
+  ui.calibrationStatus.textContent = message;
+  ui.calibrationTarget.classList.remove("is-live");
+  calibration.advanceTimer = window.setTimeout(beginCalibrationTrial, 650);
+}
+
+function finalizeCalibrationTrial(reason = "settled") {
+  if (!calibration.accepting || !calibration.movementStarted || calibration.phase !== "stage") return;
+  calibration.accepting = false;
+  window.clearTimeout(calibration.settleTimer);
+  calibration.settleTimer = 0;
+
+  const targetDistance = Math.abs(calibration.targetAngle);
+  const gain = calibration.directedPeak / targetDistance;
+  const duration = performance.now() - calibration.movementStartedAt;
+  const efficiency = calibration.totalTravel > 0 ? calibration.directedPeak / calibration.totalTravel : 0;
+  const valid = gain >= 0.35 && gain <= 1.8 && duration >= 45 && duration <= 1000 && efficiency >= 0.55;
+
+  calibration.movementStarted = false;
+  if (!valid) {
+    const message = gain < 0.35 ? "移动距离太短，再试一次" : efficiency < 0.55 ? "动作方向不稳定，再试一次" : "本次未记录，再试一次";
+    retryCalibrationTrial(message);
+    return;
+  }
+
+  if (calibration.trialIndex >= CALIBRATION_WARMUPS) {
+    calibration.samples.push({
+      gain,
+      duration,
+      efficiency: THREE.MathUtils.clamp(efficiency, 0, 1),
+      reason,
+      angle: targetDistance,
+    });
+  }
+
+  ui.calibrationStatus.textContent = "已记录";
+  ui.calibrationTarget.classList.add("is-recorded");
+  tone({ frequency: 390, endFrequency: 520, duration: 0.12, volume: 0.025, type: "sine" });
+  calibration.advanceTimer = window.setTimeout(beginCalibrationTrial, 430);
+}
+
+function handleCalibrationMovement(event) {
+  if (state.mode !== "calibration" || calibration.phase !== "stage") return false;
+  if (!calibration.accepting) return true;
+  if (document.pointerLockElement !== renderer.domElement || performance.now() < calibration.armAt) return true;
+
+  const movement = Number(event.movementX) || 0;
+  if (!movement) return true;
+  const deltaYaw = -movement * CALIBRATION_RADIANS_PER_COUNT * calibration.previousSensitivity;
+  const direction = Math.sign(calibration.targetAngle) || 1;
+  const directedDelta = deltaYaw * direction;
+
+  calibration.observedYaw += deltaYaw;
+  calibration.totalTravel += Math.abs(deltaYaw);
+  const directedPosition = calibration.observedYaw * direction;
+  calibration.directedPeak = Math.max(calibration.directedPeak, directedPosition);
+  if (directedDelta < 0) calibration.reverseTravel += Math.abs(directedDelta);
+
+  if (!calibration.movementStarted && (calibration.directedPeak >= Math.abs(calibration.targetAngle) * 0.04 || calibration.totalTravel >= 0.018)) {
+    calibration.movementStarted = true;
+    calibration.movementStartedAt = performance.now();
+    ui.calibrationStatus.textContent = "停下即可记录";
+  }
+
+  updateCalibrationTargetPosition();
+  if (!calibration.movementStarted) return true;
+
+  if (calibration.reverseTravel >= Math.max(0.007, Math.abs(calibration.targetAngle) * 0.045) && calibration.directedPeak >= Math.abs(calibration.targetAngle) * 0.4) {
+    finalizeCalibrationTrial("reversal");
+    return true;
+  }
+
+  window.clearTimeout(calibration.settleTimer);
+  calibration.settleTimer = window.setTimeout(() => finalizeCalibrationTrial("settled"), 105);
+  return true;
+}
+
+function calculateCalibrationResult() {
+  const current = calibration.previousSensitivity;
+  const entries = calibration.samples.map((sample) => {
+    const durationWeight = THREE.MathUtils.clamp(1 - Math.abs(sample.duration - 240) / 1100, 0.68, 1);
+    return {
+      value: current / sample.gain,
+      weight: sample.efficiency * durationWeight,
+    };
+  });
+  const unconstrained = weightedMedian(entries);
+  const recommended = Math.round(THREE.MathUtils.clamp(unconstrained, Math.max(0.35, current * 0.8), Math.min(2.2, current * 1.2)) * 100) / 100;
+  const gains = calibration.samples.map((sample) => sample.gain);
+  const typicalGain = medianFloat(gains);
+  const spread = typicalGain ? medianFloat(gains.map((gain) => Math.abs(gain - typicalGain))) / typicalGain : 1;
+  const consistency = Math.round(THREE.MathUtils.clamp(100 - spread * 350, 45, 98));
+  const confidence = spread <= 0.07 ? "高" : spread <= 0.13 ? "中" : "较低";
+  const dpi = clampDpi(settings.dpi);
+  const degreesPerCount = THREE.MathUtils.radToDeg(CALIBRATION_RADIANS_PER_COUNT * recommended);
+  const cm360 = (360 * 2.54) / (dpi * degreesPerCount);
+  const cs2 = (360 * 2.54) / (cm360 * dpi * CS2_YAW_DEGREES);
+  const valorant = (360 * 2.54) / (cm360 * dpi * VALORANT_YAW_DEGREES);
+  return { current, recommended, typicalGain, consistency, confidence, dpi, cm360, cs2, valorant };
+}
+
+function finishSensitivityCalibration() {
+  clearCalibrationTimers();
+  if (calibration.samples.length < 6) {
+    calibration.trialIndex = CALIBRATION_WARMUPS - 1;
+    ui.calibrationStatus.textContent = "有效数据不足，继续完成几次定位";
+    calibration.advanceTimer = window.setTimeout(beginCalibrationTrial, 700);
+    return;
+  }
+
+  calibration.result = calculateCalibrationResult();
+  calibration.recommendation = calibration.result.recommended;
+  setCalibrationView("results");
+  if (document.pointerLockElement === renderer.domElement) document.exitPointerLock?.();
+
+  const result = calibration.result;
+  const change = Math.round(((result.recommended / result.current) - 1) * 100);
+  const magnitude = Math.abs(change);
+  ui.calibrationRecommended.textContent = result.recommended.toFixed(2);
+  ui.calibrationBefore.textContent = `当前 ${result.current.toFixed(2)}`;
+  ui.calibrationChange.textContent = magnitude < 1 ? "建议保持" : `${change > 0 ? "提高" : "降低"} ${magnitude}%`;
+  ui.calibrationSummary.textContent = result.typicalGain > 1.035
+    ? "你的第一次定位通常会略微超过目标，降低灵敏度可以让停点更稳定"
+    : result.typicalGain < 0.965
+      ? "你的第一次定位通常会停在目标前，提高灵敏度可以减少移动不足"
+      : "你的第一次定位已经比较准确，当前灵敏度与操作习惯较为匹配";
+  ui.calibrationConfidence.textContent = `${result.confidence} · 一致性 ${result.consistency}%`;
+  ui.calibrationResultDpi.textContent = `${result.dpi} DPI`;
+  ui.calibrationCm360.textContent = result.cm360.toFixed(1);
+  ui.calibrationCs2.textContent = result.cs2.toFixed(3);
+  ui.calibrationValorant.textContent = result.valorant.toFixed(3);
+  ui.calibrationConversionNote.textContent = calibration.rawInput
+    ? "换算按相同 DPI 与原始鼠标输入计算。建议进入对应游戏后做一次小幅验证。"
+    : "当前浏览器未提供原始鼠标输入，换算值仅作起始参考，建议在对应游戏内进一步验证。";
+  tone({ frequency: 330, endFrequency: 660, duration: 0.28, volume: 0.035, type: "triangle" });
+}
+
+function applyCalibrationRecommendation() {
+  if (!calibration.result) return;
+  settings.sensitivity = calibration.result.recommended;
+  applySettings();
+  ui.settingsPreviewStatus.textContent = "已应用校准建议";
+  closeSensitivityCalibration();
+}
+
+function formatCoachDuration(seconds) {
+  const value = Math.max(0, Math.round(Number(seconds) || 0));
+  return `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
+}
+
+function isCoachRecipeValid(recipe) {
+  return validateTrainingRecipe(recipe).valid;
+}
+
+function addCoachMessage(role, text, loading = false) {
+  const article = document.createElement("article");
+  article.className = `coach-message is-${role}${loading ? " is-loading" : ""}`;
+  const badge = document.createElement("span");
+  if (role === "assistant") {
+    const avatar = document.createElement("img");
+    avatar.src = "./assets/ai-coach-avatar.jpg?v=1";
+    avatar.alt = "";
+    badge.appendChild(avatar);
+  } else badge.textContent = "YOU";
+  const copy = document.createElement("p");
+  copy.textContent = text;
+  article.append(badge, copy);
+  ui.coachMessages.appendChild(article);
+  ui.coachMessages.scrollTop = ui.coachMessages.scrollHeight;
+  return article;
+}
+
+function getCoachPlayerContext() {
+  return {
+    recentRuns: history.slice(-8).map((run) => ({
+      mode: run.mode,
+      score: run.score,
+      accuracy: run.accuracy,
+      reactionMs: run.medianSpeed,
+      combo: run.combo,
+    })),
+    bestScores: Object.fromEntries(["flick", "switch", "track", "zen"].map((mode) => [mode, bestScores[mode] || 0])),
+    availableModes: Object.keys(TRAINING_MODES),
+  };
+}
+
+function setCoachLoading(loading) {
+  coach.loading = loading;
+  ui.coachInput.disabled = loading;
+  ui.coachSend.disabled = loading;
+  ui.coachSend.querySelector("span").textContent = loading ? "正在编排" : "生成方案";
+  ui.coachPlanStatus.textContent = loading ? "分析训练需求" : coach.recipe ? "方案就绪" : "等待指令";
+}
+
+function renderCoachPlan(recipe) {
+  coach.recipe = recipe;
+  ui.coachPlan.classList.add("is-ready");
+  ui.coachPlanStatus.textContent = "方案就绪";
+  ui.coachPlanDuration.textContent = formatCoachDuration(recipe.totalDuration || recipe.phases.reduce((sum, phase) => sum + phase.duration, 0));
+  ui.coachPlanTitle.textContent = recipe.title;
+  ui.coachPlanSummary.textContent = recipe.summary;
+  ui.coachPlanPhases.replaceChildren();
+  recipe.phases.forEach((phase, index) => {
+    const item = document.createElement("div");
+    item.className = "coach-phase";
+    const number = document.createElement("b");
+    number.textContent = String(index + 1).padStart(2, "0");
+    const copy = document.createElement("span");
+    copy.textContent = phase.label;
+    const detail = document.createElement("small");
+    const spawn = AI_SPAWN_LABELS[phase.spawnPattern] || AI_SPAWN_LABELS.free;
+    const movement = AI_MOVEMENT_LABELS[phase.movementPattern] || AI_MOVEMENT_LABELS.static;
+    const sizeMode = AI_TARGET_SIZE_LABELS[phase.targetSizeMode] || AI_TARGET_SIZE_LABELS.combo;
+    const targetSize = `\u9776\u5b50 ${Math.round((Number(phase.targetScale) || 1) * 100)}% · ${sizeMode}`;
+    const movementRange = phase.movementPattern === "static"
+      ? null
+      : `\u79fb\u52a8\u5e45\u5ea6 ${Number(phase.movementWidth ?? 1).toFixed(2)}\u00d7${Number(phase.movementHeight ?? 1).toFixed(2)}`;
+    const lifetime = Number(phase.targetLifetime) > 0
+      ? `\u5b58\u6d3b ${Number(phase.targetLifetime).toFixed(1)} \u79d2`
+      : "\u6301\u7eed\u81f3\u547d\u4e2d";
+    detail.textContent = [AI_MODE_LABELS[phase.baseMode], spawn, movement, movementRange, targetSize, lifetime, phase.focus, `\u96be\u5ea6 ${phase.difficulty}`]
+      .filter(Boolean)
+      .join(" · ");
+    copy.appendChild(detail);
+    const duration = document.createElement("em");
+    duration.textContent = formatCoachDuration(phase.duration);
+    item.append(number, copy, duration);
+    ui.coachPlanPhases.appendChild(item);
+  });
+  ui.coachStart.disabled = false;
+  ui.coachStart.querySelector("span").textContent = `开始 ${recipe.title}`;
+}
+
+async function requestCoachPlan(message) {
+  const cleanMessage = message.trim();
+  if (!cleanMessage || coach.loading) return;
+  addCoachMessage("user", cleanMessage);
+  coach.messages.push({ role: "user", content: cleanMessage });
+  ui.coachInput.value = "";
+  setCoachLoading(true);
+  const thinking = addCoachMessage("assistant", "正在组合训练项目", true);
+  try {
+    const coachEndpoint = location.hostname === "wscn04.github.io"
+      ? "https://bloomshot-aim-lab.wangshouhanhans.chatgpt.site/api/ai-coach"
+      : "/api/ai-coach";
+    const response = await fetch(coachEndpoint, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        message: cleanMessage,
+        messages: coach.messages.slice(-7, -1),
+        currentPlan: coach.recipe,
+        playerContext: getCoachPlayerContext(),
+        capabilitiesVersion: TRAINING_RECIPE_SCHEMA_VERSION,
+      }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "AI 教练暂时没有响应");
+    if (!isCoachRecipeValid(data.recipe)) throw new Error("生成的方案没有通过游戏规则校验");
+    thinking.remove();
+    addCoachMessage("assistant", data.reply);
+    coach.messages.push({ role: "assistant", content: data.reply });
+    coach.messages = coach.messages.slice(-6);
+    renderCoachPlan(data.recipe);
+    tone({ frequency: 280, endFrequency: 520, duration: 0.22, volume: 0.025, type: "triangle" });
+  } catch (error) {
+    thinking.remove();
+    addCoachMessage("assistant", error.message || "AI 教练暂时没有响应，请稍后再试");
+    ui.coachPlanStatus.textContent = coach.recipe ? "保留上次方案" : "生成失败";
+  } finally {
+    setCoachLoading(false);
+    ui.coachInput.focus();
+  }
+}
+
+function openAiCoach() {
+  if (state.mode === "playing" || state.mode === "pause" || state.mode === "calibration") return;
+  coach.returnScreen = ["menu", "results", "daily"].includes(state.mode) ? state.mode : "menu";
+  state.mode = "ai-coach";
+  setScreen("ai-coach");
+  window.setTimeout(() => ui.coachInput.focus(), 80);
+}
+
+function closeAiCoach() {
+  if (coach.loading) return;
+  state.mode = coach.returnScreen;
+  setScreen(coach.returnScreen);
+}
+
+function startAiTraining() {
+  const recipe = coach.recipe || state.aiRecipe;
+  if (!isCoachRecipeValid(recipe)) return;
+  state.dailyActive = false;
+  state.aiRecipe = recipe;
+  state.aiActive = true;
+  state.aiPhaseIndex = 0;
+  state.aiPhaseElapsed = 0;
+  state.aiSpawnCursor = 0;
+  state.trainingMode = recipe.phases[0].baseMode;
+  document.body.dataset.mode = state.trainingMode;
+  startGame();
+}
+
+function advanceAiPhase() {
+  if (!state.aiActive || state.aiPhaseIndex >= state.aiRecipe.phases.length - 1) return false;
+  releaseTrigger();
+  state.aiPhaseIndex += 1;
+  state.aiPhaseElapsed = 0;
+  state.aiSpawnCursor = 0;
+  const phase = state.aiRecipe.phases[state.aiPhaseIndex];
+  state.trainingMode = phase.baseMode;
+  state.difficultyLevel = phase.difficulty;
+  state.combo = 0;
+  state.trackingStreak = 0;
+  state.trackingMissStreak = 0;
+  state.trackingStarted = false;
+  state.trackingAcquireStartedAt = performance.now();
+  state.trackingEnergy = 0;
+  state.trackingRecentSamples = [];
+  document.body.dataset.mode = state.trainingMode;
+  ui.timeLabel.textContent = `AI ${state.aiPhaseIndex + 1}/${state.aiRecipe.phases.length} · ${phase.label}`;
+  ui.feedback.textContent = phase.label;
+  retrigger(ui.feedback, "show");
+  clearTargets();
+  fillTargets();
+  return true;
+}
+
 function startGame() {
   document.body.classList.remove("new-best-result");
-  const config = TRAINING_MODES[state.trainingMode];
+  if (state.aiActive) {
+    state.aiPhaseIndex = 0;
+    state.aiPhaseElapsed = 0;
+    state.aiSpawnCursor = 0;
+    state.trainingMode = state.aiRecipe.phases[0].baseMode;
+    document.body.dataset.mode = state.trainingMode;
+  }
+  const config = getActiveTrainingConfig();
   releaseTrigger();
   state.mode = "playing";
   state.score = 0;
@@ -1204,13 +1968,17 @@ function startGame() {
   state.hits = 0;
   state.combo = 0;
   state.bestCombo = 0;
-  state.sessionSeconds = state.dailyActive ? DAILY_SESSION_SECONDS : config.duration;
+  state.sessionSeconds = state.aiActive
+    ? state.aiRecipe.phases.reduce((sum, phase) => sum + phase.duration, 0)
+    : state.dailyActive
+      ? DAILY_SESSION_SECONDS
+      : config.duration;
   state.remaining = state.sessionSeconds;
   state.elapsed = 0;
   state.reactionTimes = [];
   state.lastHitAt = 0;
   state.hitStop = 0;
-  state.difficultyLevel = 1;
+  state.difficultyLevel = state.aiActive ? Number(config.difficulty) || 1 : 1;
   state.adaptiveHits = 0;
   state.adaptiveMisses = 0;
   state.trackingSamples = 0;
@@ -1242,7 +2010,13 @@ function startGame() {
   state.pointerWasLocked = false;
   document.body.dataset.flow = "0";
   ui.flowLabel.textContent = "FLOW 1";
-  ui.timeLabel.textContent = config.tracking ? "追踪时间" : config.timed ? "剩余时间" : "训练时间";
+  ui.timeLabel.textContent = state.aiActive
+    ? `AI 1/${state.aiRecipe.phases.length} · ${config.label}`
+    : config.tracking
+      ? "追踪时间"
+      : config.timed
+        ? "剩余时间"
+        : "训练时间";
   camera.rotation.set(0, 0, 0);
   clearTargets();
   fillTargets();
@@ -1358,9 +2132,10 @@ function renderResult(summary, previous, isBest) {
   const isTrack = summary.mode === "track";
   const isZen = summary.mode === "zen";
   const isDaily = summary.mode === "daily";
+  const isAi = summary.mode === "ai";
   ui.grade.textContent = isZen ? "∞" : summary.grade;
-  ui.resultTitle.textContent = isDaily ? "今日训练完成" : isZen ? "训练结束" : summary.grade === "S" ? "完美发挥" : summary.grade === "A" ? "状态正佳" : summary.grade === "B" ? "渐入状态" : "再来一轮";
-  ui.resultScoreLabel.textContent = isZen ? "命中目标" : isDaily ? "综合得分" : "最终得分";
+  ui.resultTitle.textContent = isDaily ? "今日训练完成" : isAi ? "定制训练完成" : isZen ? "训练结束" : summary.grade === "S" ? "完美发挥" : summary.grade === "A" ? "状态正佳" : summary.grade === "B" ? "渐入状态" : "再来一轮";
+  ui.resultScoreLabel.textContent = isZen ? "命中目标" : isDaily || isAi ? "综合得分" : "最终得分";
   ui.finalScore.textContent = (isZen ? summary.hits : summary.score).toLocaleString("zh-CN");
   ui.precisionLabel.textContent = isTrack ? "跟随" : "精准";
   ui.speedLabel.textContent = isTrack ? "平滑" : "速度";
@@ -1375,7 +2150,7 @@ function renderResult(summary, previous, isBest) {
   ui.fastestSpeed.textContent = summary.fastestSpeed ? `${summary.fastestSpeed}ms` : "—";
   ui.weakZone.textContent = summary.weakZone;
   ui.newBest.classList.toggle("show", isBest);
-  ui.resultNote.textContent = isDaily ? `三项训练全部完成 · 连续 ${dailyRecord.streak} 天` : isZen ? `本轮命中 ${summary.hits} 次` : summary.accuracy >= 85 ? "准心稳 节奏快 这局很干净" : summary.accuracy >= 65 ? "手感起来了 再冲一轮" : "放松手腕 瞄准目标中心";
+  ui.resultNote.textContent = isDaily ? `三项训练全部完成 · 连续 ${dailyRecord.streak} 天` : isAi ? `${state.aiRecipe?.title || "AI 定制训练"} · ${state.aiRecipe?.phases?.length || 1} 个阶段` : isZen ? `本轮命中 ${summary.hits} 次` : summary.accuracy >= 85 ? "准心稳 节奏快 这局很干净" : summary.accuracy >= 65 ? "手感起来了 再冲一轮" : "放松手腕 瞄准目标中心";
   if (!previous) ui.resultInsight.textContent = summary.weakZone === "继续采样" ? "第一局已记录，下一局开始显示进步" : `${summary.weakZone}反应稍慢 · 下一局注意提前回正`;
   else if (isZen) ui.resultInsight.textContent = summary.hits >= previous.hits ? `比上次多命中 ${summary.hits - previous.hits} 个目标` : `再命中 ${previous.hits - summary.hits + 1} 个就能超过上次`;
   else {
@@ -1383,7 +2158,7 @@ function renderResult(summary, previous, isBest) {
     const accuracyDelta = summary.accuracy - previous.accuracy;
     ui.resultInsight.textContent = `${scoreDelta >= 0 ? "得分 +" : "得分 "}${scoreDelta.toLocaleString("zh-CN")} · 命中率 ${accuracyDelta >= 0 ? "+" : ""}${accuracyDelta}%`;
   }
-  ui.historyLabel.textContent = summary.mode === "daily" ? "DAILY" : TRAINING_MODES[summary.mode]?.code || "TRAINING";
+  ui.historyLabel.textContent = summary.mode === "daily" ? "DAILY" : summary.mode === "ai" ? "CUSTOM" : TRAINING_MODES[summary.mode]?.code || "TRAINING";
   renderHistory();
   updateModeBest();
 }
@@ -1449,7 +2224,8 @@ function showDailyTransition(summary) {
 
 function endGame() {
   releaseTrigger();
-  const summary = summarizeCurrentRun();
+  const wasAi = state.aiActive;
+  const summary = summarizeCurrentRun(wasAi ? "ai" : state.trainingMode);
   const stored = storeRun(summary);
   if (state.dailyActive) {
     addDailySummary(summary);
@@ -1464,12 +2240,14 @@ function endGame() {
     renderResult(combined, dailyStored.previous, dailyStored.isBest);
     return;
   }
+  state.aiActive = false;
   renderResult(summary, stored.previous, stored.isBest);
 }
 
 function goHome() {
   document.body.classList.remove("new-best-result");
   state.dailyActive = false;
+  state.aiActive = false;
   releaseTrigger();
   state.mode = "menu";
   document.exitPointerLock?.();
@@ -1532,6 +2310,7 @@ function playMenuPreview() {
 
 function selectTrainingMode(mode) {
   const config = TRAINING_MODES[mode];
+  state.aiActive = false;
   state.trainingMode = mode;
   document.body.dataset.mode = mode;
   for (const [key, button] of Object.entries({ flick: ui.modeFlick, switch: ui.modeSwitch, track: ui.modeTrack, zen: ui.modeZen })) {
@@ -1601,6 +2380,7 @@ function closeSettings() {
 ui.start.addEventListener("click", prepareGame);
 ui.retry.addEventListener("click", () => {
   if (state.resultMode === "daily") startDaily();
+  else if (state.resultMode === "ai") startAiTraining();
   else {
     selectTrainingMode(state.resultMode);
     startGame();
@@ -1630,6 +2410,28 @@ ui.tutorialSkip.addEventListener("click", () => {
 });
 ui.settingsOpen.addEventListener("click", openSettings);
 ui.settingsClose.addEventListener("click", closeSettings);
+ui.aiCoachOpen.addEventListener("click", openAiCoach);
+ui.aiCoachClose.addEventListener("click", closeAiCoach);
+ui.coachStart.addEventListener("click", startAiTraining);
+ui.coachForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  requestCoachPlan(ui.coachInput.value);
+});
+ui.coachInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    requestCoachPlan(ui.coachInput.value);
+  }
+});
+document.querySelectorAll("[data-ai-prompt]").forEach((button) => {
+  button.addEventListener("click", () => requestCoachPlan(button.dataset.aiPrompt || ""));
+});
+ui.calibrationOpen.addEventListener("click", openSensitivityCalibration);
+ui.calibrationClose.addEventListener("click", closeSensitivityCalibration);
+ui.calibrationStart.addEventListener("click", startSensitivityCalibration);
+ui.calibrationApply.addEventListener("click", applyCalibrationRecommendation);
+ui.calibrationRetry.addEventListener("click", startSensitivityCalibration);
+ui.calibrationKeep.addEventListener("click", closeSensitivityCalibration);
 ui.settingsReset.addEventListener("click", () => {
   Object.assign(settings, defaultSettings);
   applySettingsToUi();
@@ -1639,6 +2441,9 @@ ui.settingsReset.addEventListener("click", () => {
 function applySettingsToUi() {
   ui.settingsSensitivity.value = String(settings.sensitivity);
   ui.settingsSensitivityValue.textContent = Number(settings.sensitivity).toFixed(2);
+  settings.dpi = clampDpi(settings.dpi);
+  ui.settingsDpi.value = String(settings.dpi);
+  ui.calibrationDpi.value = String(settings.dpi);
   ui.fov.value = String(settings.fov);
   ui.fovValue.textContent = `${settings.fov}°`;
   ui.volume.value = String(settings.volume);
@@ -1691,6 +2496,16 @@ bindSetting(ui.showGun, "showGun", Boolean);
 bindSetting(ui.cameraShake, "cameraShake", Boolean);
 bindSetting(ui.lowGraphics, "lowGraphics", Boolean);
 
+function updateDpiSetting(value) {
+  settings.dpi = clampDpi(value);
+  ui.settingsDpi.value = String(settings.dpi);
+  ui.calibrationDpi.value = String(settings.dpi);
+  saveSettings();
+}
+
+ui.settingsDpi.addEventListener("change", () => updateDpiSetting(ui.settingsDpi.value));
+ui.calibrationDpi.addEventListener("change", () => updateDpiSetting(ui.calibrationDpi.value));
+
 renderer.domElement.addEventListener("mousedown", (event) => {
   if (event.button !== 0 || state.mode !== "playing") return;
   if (state.trainingMode === "track") {
@@ -1706,10 +2521,15 @@ document.addEventListener("mouseup", (event) => {
 });
 window.addEventListener("blur", releaseTrigger);
 renderer.domElement.addEventListener("click", () => {
+  if (state.mode === "calibration" && calibration.phase === "stage" && document.pointerLockElement !== renderer.domElement) {
+    requestCalibrationPointerLock();
+    return;
+  }
   if (state.mode === "pause") resumeGame();
 });
 
 document.addEventListener("mousemove", (event) => {
+  if (handleCalibrationMovement(event)) return;
   if (state.mode !== "playing") return;
   if (document.pointerLockElement === renderer.domElement) {
     const factor = state.sensitivity * 0.00165;
@@ -1727,6 +2547,20 @@ document.addEventListener("mousemove", (event) => {
 
 document.addEventListener("pointerlockchange", () => {
   const locked = document.pointerLockElement === renderer.domElement;
+  if (state.mode === "calibration") {
+    if (locked && calibration.phase === "stage") {
+      calibration.leaving = false;
+      clearCalibrationTimers();
+      ui.calibrationStatus.textContent = "保持准星居中";
+      calibration.countdownTimer = window.setTimeout(beginCalibrationTrial, 620);
+    } else if (!locked && calibration.phase === "stage" && !calibration.leaving) {
+      clearCalibrationTimers();
+      calibration.samples = [];
+      ui.calibrationInputNote.textContent = "校准已暂停。准备好后可重新开始，测试数据将重新记录";
+      setCalibrationView("intro");
+    }
+    return;
+  }
   if (locked) {
     state.pointerWasLocked = true;
   }
@@ -1742,6 +2576,14 @@ document.addEventListener("pointerlockchange", () => {
 });
 
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && state.mode === "ai-coach") {
+    closeAiCoach();
+    return;
+  }
+  if (event.key === "Escape" && state.mode === "calibration" && calibration.phase !== "stage") {
+    closeSensitivityCalibration();
+    return;
+  }
   if (event.key === "Escape" && state.mode === "pause") {
     resumeGame();
     return;
@@ -1762,21 +2604,64 @@ window.addEventListener("resize", () => {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, settings.lowGraphics ? 1 : 1.75));
+  updateCalibrationTargetPosition();
 });
 
-function updateTargets(time) {
-  for (const target of activeTargets) {
-    const birthProgress = Math.min(1, (performance.now() - target.userData.born) / 190);
-    const elastic = birthProgress === 1 ? 1 : 1 - Math.pow(2, -10 * birthProgress) * Math.cos((birthProgress * 10 - 0.75) * (2 * Math.PI / 3));
-    const pulse = 1 + Math.sin(time * 2.1 + target.userData.phase) * 0.018;
-    target.scale.setScalar(elastic * pulse * (target.userData.baseScale || 1));
-    if (state.trainingMode === "track") {
-      const speed = target.userData.pathSpeed;
-      target.position.x = target.userData.baseX + Math.sin(time * speed + target.userData.phase) * target.userData.pathWidth;
-      target.position.y = target.userData.baseY + Math.sin(time * speed * 1.43 + target.userData.phase * 0.7) * target.userData.pathHeight;
-    } else {
-      target.position.y = target.userData.baseY + Math.sin(time * 0.85 + target.userData.phase) * 0.08;
+function updateTargets(time, delta) {
+  const config = getActiveTrainingConfig();
+  const fixedTargetSize = config.targetSizeMode === "fixed";
+  for (let targetIndex = activeTargets.length - 1; targetIndex >= 0; targetIndex -= 1) {
+    const target = activeTargets[targetIndex];
+    target.userData.activeAgeMs = advanceTargetActiveAge(target.userData.activeAgeMs, delta, state.mode === "playing");
+    const targetAge = target.userData.activeAgeMs;
+    if (target.userData.lifetimeMs > 0 && targetAge >= target.userData.lifetimeMs) {
+      target.userData.dead = true;
+      removeTarget(target);
+      spawnTarget();
+      continue;
     }
+    const birthProgress = Math.min(1, targetAge / 190);
+    const elastic = birthProgress === 1 ? 1 : 1 - Math.pow(2, -10 * birthProgress) * Math.cos((birthProgress * 10 - 0.75) * (2 * Math.PI / 3));
+    const pulse = fixedTargetSize ? 1 : 1 + Math.sin(time * 2.1 + target.userData.phase) * 0.018;
+    const comboScale = applyTargetComboAppearance(target, delta);
+    target.scale.setScalar(elastic * pulse * (target.userData.baseScale || 1) * comboScale);
+    const speed = target.userData.pathSpeed;
+    const motionTime = time * speed + target.userData.phase;
+    const pattern = target.userData.movementPattern || (state.trainingMode === "track" ? "free" : "static");
+    if (pattern === "waypoints" && target.userData.movementPoints.length >= 2) {
+      const points = target.userData.movementPoints;
+      const progress = ((motionTime * 0.48) % points.length + points.length) % points.length;
+      const index = Math.floor(progress);
+      const nextIndex = (index + 1) % points.length;
+      const fraction = progress - index;
+      const eased = fraction * fraction * (3 - 2 * fraction);
+      const point = points[index];
+      const next = points[nextIndex];
+      target.position.x = THREE.MathUtils.lerp(point.x, next.x, eased) * 6.2 * target.userData.movementWidth;
+      target.position.y = 2.75 + THREE.MathUtils.lerp(point.y, next.y, eased) * 2.35 * target.userData.movementHeight;
+    } else if (pattern === "horizontal") {
+      target.position.x = target.userData.baseX + Math.sin(motionTime) * target.userData.pathWidth;
+      target.position.y = target.userData.baseY;
+    } else if (pattern === "vertical") {
+      target.position.x = target.userData.baseX;
+      target.position.y = target.userData.baseY + Math.sin(motionTime) * target.userData.pathHeight;
+    } else if (pattern === "figure8") {
+      target.position.x = target.userData.baseX + Math.sin(motionTime) * target.userData.pathWidth;
+      target.position.y = target.userData.baseY + Math.sin(motionTime * 2) * target.userData.pathHeight * 0.72;
+    } else if (pattern === "circle") {
+      target.position.x = target.userData.baseX + Math.cos(motionTime) * target.userData.pathWidth * 0.82;
+      target.position.y = target.userData.baseY + Math.sin(motionTime) * target.userData.pathHeight;
+    } else if (pattern === "free") {
+      target.position.x = target.userData.baseX + Math.sin(motionTime) * target.userData.pathWidth;
+      target.position.y = target.userData.baseY + Math.sin(time * speed * 1.43 + target.userData.phase * 0.7) * target.userData.pathHeight;
+    } else if (!state.aiActive && state.trainingMode !== "track") {
+      target.position.y = target.userData.baseY + Math.sin(time * 0.85 + target.userData.phase) * 0.08;
+    } else {
+      target.position.x = target.userData.baseX;
+      target.position.y = target.userData.baseY;
+    }
+    target.position.x = THREE.MathUtils.clamp(target.position.x, -7.1, 7.1);
+    target.position.y = THREE.MathUtils.clamp(target.position.y, 0.1, 5.7);
     target.lookAt(camera.position);
   }
 }
@@ -1817,14 +2702,19 @@ function animate() {
 
   if (state.mode === "playing") {
     state.elapsed += delta;
-    if (TRAINING_MODES[state.trainingMode].timed) state.remaining -= delta;
+    if (isTimedSession()) state.remaining -= delta;
+    if (state.aiActive) {
+      state.aiPhaseElapsed += delta;
+      const phase = getAiPhase();
+      if (phase && state.aiPhaseElapsed >= phase.duration) advanceAiPhase();
+    }
     updateTracking(delta);
     hudTick += delta;
     if (hudTick > 0.05) {
       updateHud();
       hudTick = 0;
     }
-    if (TRAINING_MODES[state.trainingMode].timed && state.remaining <= 0) endGame();
+    if (isTimedSession() && state.remaining <= 0) endGame();
   }
 
   state.hitStop = Math.max(0, state.hitStop - delta);
@@ -1848,7 +2738,7 @@ function animate() {
   if (roomGlow) roomGlow.intensity = THREE.MathUtils.lerp(roomGlow.intensity, 36 + flowTier * 12, 0.08);
 
   const visualDelta = state.hitStop > 0 ? delta * 0.08 : delta;
-  updateTargets(time);
+  updateTargets(time, delta);
   updateEffects(visualDelta);
   renderer.render(scene, camera);
 }
