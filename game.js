@@ -1880,7 +1880,7 @@ async function requestCoachPlan(message) {
       }),
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || "AI 教练暂时没有响应");
+    if (!response.ok) throw new Error(data.error || `AI 服务返回错误（${response.status}），请稍后重试`);
     if (!isCoachRecipeValid(data.recipe)) throw new Error("生成的方案没有通过游戏规则校验");
     thinking.remove();
     addCoachMessage("assistant", data.reply);
@@ -1890,7 +1890,10 @@ async function requestCoachPlan(message) {
     tone({ frequency: 280, endFrequency: 520, duration: 0.22, volume: 0.025, type: "triangle" });
   } catch (error) {
     thinking.remove();
-    addCoachMessage("assistant", error.message || "AI 教练暂时没有响应，请稍后再试");
+    const message = error instanceof TypeError
+      ? "无法连接 AI 服务，请检查网络后重试"
+      : error.message || "AI 服务发生未知错误，请稍后重新生成";
+    addCoachMessage("assistant", message);
     ui.coachPlanStatus.textContent = coach.recipe ? "保留上次方案" : "生成失败";
   } finally {
     setCoachLoading(false);
